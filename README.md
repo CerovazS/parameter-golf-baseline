@@ -28,6 +28,7 @@ Happy training!
 
 ## Leaderboard
 
+![Running best leaderboard score over submission time](assets/leaderboard-best-score-over-time.svg)
 
 | Run | Score | Author | Summary | Date | Info |
 |-----|------:|--------|---------|------|------|

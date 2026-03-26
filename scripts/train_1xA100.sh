@@ -14,14 +14,14 @@ set -euo pipefail
 
 module load cuda/12.2
 
+mkdir -p slurm results
+
+# Load .env if present (must come before proxy config)
+set -a; [ -f .env ] && source .env; set +a
+
 # Squid proxy for internet access on compute nodes
 export http_proxy="http://login01:${PROXY_PORT}"
 export https_proxy="http://login01:${PROXY_PORT}"
-
-mkdir -p slurm results
-
-# Load .env if present
-set -a; [ -f .env ] && source .env; set +a
 
 # ---- Configuration ----
 export RUN_ID="${RUN_ID:-baseline_sp1024}"

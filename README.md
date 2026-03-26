@@ -85,7 +85,7 @@ If you don't have a Mac with Apple Silicon, you can run an adapted version of th
 First, clone the repository, create a fresh Python environment, and install the packages needed for the MLX path plus dataset download:
 
 ```bash
-git clone https://github.com/openai/parameter-golf.git
+git clone https://github.com/crisostomi/parameter-golf.git
 cd parameter-golf
 python3 -m venv .venv
 source .venv/bin/activate
@@ -133,7 +133,7 @@ On your remote machine, clone the repo onto local disk. All Python dependencies 
 
 ```bash
 cd /workspace
-git clone https://github.com/openai/parameter-golf.git
+git clone https://github.com/crisostomi/parameter-golf.git
 cd parameter-golf
 ```
 

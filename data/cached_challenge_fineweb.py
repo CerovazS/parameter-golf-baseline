@@ -9,9 +9,17 @@ from huggingface_hub import hf_hub_download
 
 REPO_ID = os.environ.get("MATCHED_FINEWEB_REPO_ID", "willdepueoai/parameter-golf")
 REMOTE_ROOT_PREFIX = os.environ.get("MATCHED_FINEWEB_REMOTE_ROOT_PREFIX", "datasets")
-ROOT = Path(__file__).resolve().parent
+DEFAULT_ROOT = Path(__file__).resolve().parent
+ROOT = DEFAULT_ROOT
 DATASETS_DIR = ROOT / "datasets"
 TOKENIZERS_DIR = ROOT / "tokenizers"
+
+
+def set_root(path: Path) -> None:
+    global ROOT, DATASETS_DIR, TOKENIZERS_DIR
+    ROOT = path
+    DATASETS_DIR = ROOT / "datasets"
+    TOKENIZERS_DIR = ROOT / "tokenizers"
 
 def dataset_dir_for_variant(name: str) -> str:
     if name == "byte260":
@@ -114,11 +122,19 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Also download docs_selected.jsonl and its sidecar for tokenizer retraining or dataset re-export.",
     )
+    parser.add_argument(
+        "--target",
+        type=Path,
+        default=None,
+        help="Target directory for downloaded files. Defaults to the data/ directory next to this script.",
+    )
     return parser
 
 
 def main() -> None:
     args = build_parser().parse_args()
+    if args.target is not None:
+        set_root(args.target.resolve())
     dataset_dir = dataset_dir_for_variant(args.variant)
     train_shards = args.train_shards_positional if args.train_shards_positional is not None else args.train_shards
     if train_shards < 0:

@@ -43,6 +43,7 @@ class Hyperparameters:
     train_files = os.path.join(data_path, "fineweb_train_*.bin")
     val_files = os.path.join(data_path, "fineweb_val_*.bin")
     tokenizer_path = os.environ.get("TOKENIZER_PATH", "./data/tokenizers/fineweb_1024_bpe.model")
+    out_dir = os.environ.get("OUT_DIR", "outputs/baseline")
     run_id = os.environ.get("RUN_ID", str(uuid.uuid4()))
     seed = int(os.environ.get("SEED", 1337))
 
@@ -769,16 +770,17 @@ def main() -> None:
     enable_mem_efficient_sdp(False)
     enable_math_sdp(False)
 
-    logfile = None
-    metrics_logfile = None
+    run_dir = Path(args.out_dir) / args.run_id
+    logfile: Path | None = None
+    metrics_logfile: Path | None = None
     text_log_handle = None
     metrics_log_handle = None
     if master_process:
-        os.makedirs("logs", exist_ok=True)
-        logfile = f"logs/{args.run_id}.txt"
-        metrics_logfile = f"logs/{args.run_id}.jsonl"
-        text_log_handle = open(logfile, "a", encoding="utf-8", buffering=1)
-        metrics_log_handle = open(metrics_logfile, "a", encoding="utf-8", buffering=1)
+        run_dir.mkdir(parents=True, exist_ok=True)
+        logfile = run_dir / f"{args.run_id}.txt"
+        metrics_logfile = run_dir / f"{args.run_id}.jsonl"
+        text_log_handle = logfile.open("a", encoding="utf-8", buffering=1)
+        metrics_log_handle = metrics_logfile.open("a", encoding="utf-8", buffering=1)
         print(logfile)
 
     def log0(msg: str, console: bool = True) -> None:
@@ -804,8 +806,8 @@ def main() -> None:
     )
     log0("=" * 100, console=False)
     if metrics_logfile is not None:
+        log0(f"run_dir:{run_dir}")
         log0(f"metrics_logfile:{metrics_logfile}")
-
     # -----------------------------
     # TOKENIZER + VALIDATION METRIC SETUP
     # -----------------------------
@@ -1104,11 +1106,14 @@ def main() -> None:
     # Save the raw state (useful for debugging/loading in PyTorch directly), then always produce
     # the compressed int8+zlib artifact and validate the round-tripped weights.
 
+    final_model_path = run_dir / "final_model.pt"
+    final_quant_path = run_dir / "final_model.int8.ptz"
+
     if master_process:
-        torch.save(base_model.state_dict(), "final_model.pt")
-        model_bytes = os.path.getsize("final_model.pt")
+        torch.save(base_model.state_dict(), final_model_path)
+        model_bytes = final_model_path.stat().st_size
         code_bytes = len(code.encode("utf-8"))
-        log0(f"Serialized model: {model_bytes} bytes")
+        log0(f"Serialized model: {final_model_path} bytes:{model_bytes}")
         log0(f"Code size: {code_bytes} bytes")
         log0(f"Total submission size: {model_bytes + code_bytes} bytes")
 
@@ -1119,20 +1124,20 @@ def main() -> None:
     quant_blob = zlib.compress(quant_raw, level=9)
     quant_raw_bytes = len(quant_raw)
     if master_process:
-        with open("final_model.int8.ptz", "wb") as f:
+        with final_quant_path.open("wb") as f:
             f.write(quant_blob)
-        quant_file_bytes = os.path.getsize("final_model.int8.ptz")
+        quant_file_bytes = final_quant_path.stat().st_size
         code_bytes = len(code.encode("utf-8"))
         ratio = quant_stats["baseline_tensor_bytes"] / max(quant_stats["int8_payload_bytes"], 1)
         log0(
-            f"Serialized model int8+zlib: {quant_file_bytes} bytes "
+            f"Serialized model int8+zlib: {final_quant_path} bytes:{quant_file_bytes} "
             f"(payload:{quant_stats['int8_payload_bytes']} raw_torch:{quant_raw_bytes} payload_ratio:{ratio:.2f}x)"
         )
         log0(f"Total submission size int8+zlib: {quant_file_bytes + code_bytes} bytes")
 
     if distributed:
         dist.barrier()
-    with open("final_model.int8.ptz", "rb") as f:
+    with final_quant_path.open("rb") as f:
         quant_blob_disk = f.read()
     quant_state = torch.load(io.BytesIO(zlib.decompress(quant_blob_disk)), map_location="cpu")
     base_model.load_state_dict(dequantize_state_dict_int8(quant_state), strict=True)
@@ -1164,7 +1169,6 @@ def main() -> None:
             "eval_time_ms": 1000.0 * (time.perf_counter() - t_qeval),
         }
     )
-
     if text_log_handle is not None:
         text_log_handle.close()
     if metrics_log_handle is not None:

@@ -163,6 +163,8 @@ By default, `train_gpt.py` keeps its ~10 minute wallclock cap. If you want a lon
 
 By default, this command prints `train_loss` step logs during training and prints `val_loss`, `val_bpb`, and compressed model size in the final `final_int8_zlib_roundtrip` lines at the end. If you want periodic validation logs during the run, set `VAL_LOSS_EVERY`, for example `VAL_LOSS_EVERY=200`. For the baseline config, the final `val_bpb` should land around ~1.2 with a compressed model size under 16MB.
 
+Local run artifacts are written under `outputs/baseline/<RUN_ID>/`, including the text log, metrics `.jsonl`, `final_model.pt`, and `final_model.int8.ptz`.
+
 For dataset export, tokenizer export, and docs-cache rebuild instructions, see [data/README.md](data/README.md).
 
 Evaluation will be in the RunPod environment with all packages installed. For local self-setup, prefer `uv sync`; `requirements.txt` is still provided as a reference.

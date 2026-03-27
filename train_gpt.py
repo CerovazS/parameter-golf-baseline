@@ -9,6 +9,7 @@ from __future__ import annotations
 import copy
 import glob
 import io
+import json
 import math
 import os
 import random
@@ -769,9 +770,15 @@ def main() -> None:
     enable_math_sdp(False)
 
     logfile = None
+    metrics_logfile = None
+    text_log_handle = None
+    metrics_log_handle = None
     if master_process:
         os.makedirs("logs", exist_ok=True)
         logfile = f"logs/{args.run_id}.txt"
+        metrics_logfile = f"logs/{args.run_id}.jsonl"
+        text_log_handle = open(logfile, "a", encoding="utf-8", buffering=1)
+        metrics_log_handle = open(metrics_logfile, "a", encoding="utf-8", buffering=1)
         print(logfile)
 
     def log0(msg: str, console: bool = True) -> None:
@@ -779,9 +786,13 @@ def main() -> None:
             return
         if console:
             print(msg)
-        if logfile is not None:
-            with open(logfile, "a", encoding="utf-8") as f:
-                print(msg, file=f)
+        if text_log_handle is not None:
+            print(msg, file=text_log_handle)
+
+    def event0(payload: dict[str, object]) -> None:
+        if not master_process or metrics_log_handle is None:
+            return
+        metrics_log_handle.write(json.dumps(payload, separators=(",", ":")) + "\n")
 
     log0(code, console=False)
     log0("=" * 100, console=False)
@@ -792,6 +803,8 @@ def main() -> None:
         console=False,
     )
     log0("=" * 100, console=False)
+    if metrics_logfile is not None:
+        log0(f"metrics_logfile:{metrics_logfile}")
 
     # -----------------------------
     # TOKENIZER + VALIDATION METRIC SETUP
@@ -989,6 +1002,17 @@ def main() -> None:
                 has_leading_space_lut,
                 is_boundary_token_lut,
             )
+            event0(
+                {
+                    "event": "val_step",
+                    "step": step,
+                    "iterations": args.iterations,
+                    "train_time_ms": training_time_ms,
+                    "step_avg_ms": training_time_ms / max(step, 1),
+                    "val_loss": val_loss,
+                    "val_bpb": val_bpb,
+                }
+            )
             log0(
                 f"step:{step}/{args.iterations} val_loss:{val_loss:.4f} val_bpb:{val_bpb:.4f} "
                 f"train_time:{training_time_ms:.0f}ms step_avg:{training_time_ms / max(step, 1):.2f}ms"
@@ -1035,13 +1059,28 @@ def main() -> None:
 
         step += 1
         approx_training_time_ms = training_time_ms + 1000.0 * (time.perf_counter() - t0)
+        step_time_ms = approx_training_time_ms - elapsed_ms
+        train_loss_value = float(train_loss.item())
+        tok_s = args.train_batch_tokens / (step_time_ms / 1000.0) if step_time_ms > 0 else None
+        event0(
+            {
+                "event": "train_step",
+                "step": step,
+                "iterations": args.iterations,
+                "train_time_ms": approx_training_time_ms,
+                "step_time_ms": step_time_ms,
+                "step_avg_ms": approx_training_time_ms / step,
+                "train_loss": train_loss_value,
+                "tok_s": tok_s,
+            }
+        )
         should_log_train = (
             args.train_log_every > 0
             and (step <= 10 or step % args.train_log_every == 0 or stop_after_step is not None)
         )
         if should_log_train:
             log0(
-                f"step:{step}/{args.iterations} train_loss:{train_loss.item():.4f} "
+                f"step:{step}/{args.iterations} train_loss:{train_loss_value:.4f} "
                 f"train_time:{approx_training_time_ms:.0f}ms step_avg:{approx_training_time_ms / step:.2f}ms"
             )
 
@@ -1117,6 +1156,19 @@ def main() -> None:
         f"eval_time:{1000.0 * (time.perf_counter() - t_qeval):.0f}ms"
     )
     log0(f"final_int8_zlib_roundtrip_exact val_loss:{q_val_loss:.8f} val_bpb:{q_val_bpb:.8f}")
+    event0(
+        {
+            "event": "final_int8_zlib_roundtrip",
+            "val_loss": q_val_loss,
+            "val_bpb": q_val_bpb,
+            "eval_time_ms": 1000.0 * (time.perf_counter() - t_qeval),
+        }
+    )
+
+    if text_log_handle is not None:
+        text_log_handle.close()
+    if metrics_log_handle is not None:
+        metrics_log_handle.close()
 
     if distributed:
         dist.destroy_process_group()

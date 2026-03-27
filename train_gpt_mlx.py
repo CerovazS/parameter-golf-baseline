@@ -841,13 +841,18 @@ def main() -> None:
     out_dir = Path(args.out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
     logfile = out_dir / f"{args.run_id}.txt"
+    metrics_logfile = out_dir / f"{args.run_id}.jsonl"
+    text_log_handle = logfile.open("a", encoding="utf-8", buffering=1)
+    metrics_log_handle = metrics_logfile.open("a", encoding="utf-8", buffering=1)
     print(logfile)
 
     def log(msg: str, console: bool = True) -> None:
         if console:
             print(msg)
-        with logfile.open("a", encoding="utf-8") as f:
-            print(msg, file=f)
+        print(msg, file=text_log_handle)
+
+    def event(payload: dict[str, object]) -> None:
+        metrics_log_handle.write(json.dumps(payload, separators=(",", ":")) + "\n")
 
     code = Path(__file__).read_text(encoding="utf-8")
     log(code, console=False)
@@ -855,6 +860,7 @@ def main() -> None:
     log(f"Running Python {sys.version}", console=False)
     log(f"Running MLX {mx.__version__}", console=False)
     log("=" * 100, console=False)
+    log(f"metrics_logfile:{metrics_logfile}")
 
     if not args.tie_embeddings:
         raise NotImplementedError("train_gpt_mlx.py only supports tied embeddings")
@@ -1014,6 +1020,17 @@ def main() -> None:
                 is_boundary_token_lut,
                 log_fn=log,
             )
+            event(
+                {
+                    "event": "val_step",
+                    "step": step,
+                    "iterations": args.iterations,
+                    "train_time_ms": train_time_ms,
+                    "step_avg_ms": train_time_ms / max(step, 1),
+                    "val_loss": val_loss,
+                    "val_bpb": val_bpb,
+                }
+            )
             if step % 25 == 0 or last_step:
                 log(
                     f"step:{step}/{args.iterations} val_loss:{val_loss:.4f} val_bpb:{val_bpb:.4f} "
@@ -1046,8 +1063,20 @@ def main() -> None:
 
         step_ms = 1000.0 * (time.perf_counter() - step_t0)
         approx_train_time_ms = train_time_ms + 1000.0 * (time.perf_counter() - t0)
-        tok_s = args.train_batch_tokens / (step_ms / 1000.0)
+        tok_s = args.train_batch_tokens / (step_ms / 1000.0) if step_ms > 0 else None
         step += 1
+        event(
+            {
+                "event": "train_step",
+                "step": step,
+                "iterations": args.iterations,
+                "train_time_ms": approx_train_time_ms,
+                "step_time_ms": step_ms,
+                "step_avg_ms": approx_train_time_ms / step,
+                "train_loss": train_loss_value,
+                "tok_s": tok_s,
+            }
+        )
         if args.train_log_every > 0 and (step <= 10 or step % args.train_log_every == 0 or stop_after_step is not None):
             log(
                 f"step:{step}/{args.iterations} train_loss:{train_loss_value:.4f} "
@@ -1098,6 +1127,16 @@ def main() -> None:
     q_eval_ms = 1000.0 * (time.perf_counter() - q_t0)
     log(f"final_int8_zlib_roundtrip val_loss:{q_val_loss:.4f} val_bpb:{q_val_bpb:.4f} eval_time:{q_eval_ms:.0f}ms")
     log(f"final_int8_zlib_roundtrip_exact val_loss:{q_val_loss:.8f} val_bpb:{q_val_bpb:.8f}")
+    event(
+        {
+            "event": "final_int8_zlib_roundtrip",
+            "val_loss": q_val_loss,
+            "val_bpb": q_val_bpb,
+            "eval_time_ms": q_eval_ms,
+        }
+    )
+    text_log_handle.close()
+    metrics_log_handle.close()
 
 
 if __name__ == "__main__":

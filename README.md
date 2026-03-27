@@ -82,25 +82,29 @@ If you have an Apple laptop or desktop with Apple Silicon, we've set up a simple
 
 If you don't have a Mac with Apple Silicon, you can run an adapted version of this script without MLX support. Just ask [Codex](https://openai.com/codex/) to refactor it; the change is straightforward. It may still be fairly slow, so we recommend jumping straight to cloud GPUs with Runpod.
 
-First, clone the repository, create a fresh Python environment, and install the packages needed for the MLX path plus dataset download:
+First, clone the repository and sync the project's locked Python environment with `uv`:
 
 ```bash
 git clone https://github.com/crisostomi/parameter-golf.git
 cd parameter-golf
-python3 -m venv .venv
-source .venv/bin/activate
-python -m pip install --upgrade pip
-pip install mlx numpy sentencepiece huggingface-hub datasets tqdm
+curl -LsSf https://astral.sh/uv/install.sh | sh  # if uv is not installed yet
+uv sync
+```
+
+For the Apple Silicon MLX path, install `mlx` into the project environment:
+
+```bash
+uv pip install mlx
 ```
 
 Download our cached version of FineWeb with the 1024-token vocabulary:
 
 ```bash
-python3 data/cached_challenge_fineweb.py --variant sp1024 --train-shards 10
+uv run python3 data/cached_challenge_fineweb.py --variant sp1024 --train-shards 10
 ```
 
 This populates `./data/datasets/fineweb10B_sp1024/` and `./data/tokenizers/`.
-By default this downloads the full validation split plus 80 training shards (8B tokens). For a smaller local smoke subset, pass `--train-shards 1`, for example `python3 data/cached_challenge_fineweb.py --variant sp1024 --train-shards 1`.
+By default this downloads the full validation split plus 80 training shards (8B tokens). For a smaller local smoke subset, pass `--train-shards 1`, for example `uv run python3 data/cached_challenge_fineweb.py --variant sp1024 --train-shards 1`.
 
 Then run a small MLX training job:
 
@@ -110,7 +114,7 @@ ITERATIONS=200 \
 TRAIN_BATCH_TOKENS=8192 \
 VAL_LOSS_EVERY=0 \
 VAL_BATCH_SIZE=8192 \
-python3 train_gpt_mlx.py
+uv run python3 train_gpt_mlx.py
 ```
 
 Validation always runs on the full `fineweb_val_*` split, which is the fixed first-50k-document set. The smoke command above skips periodic validation and just prints the final `val_loss` and `val_bpb` once at the end.
@@ -161,7 +165,7 @@ By default, this command prints `train_loss` step logs during training and print
 
 For dataset export, tokenizer export, and docs-cache rebuild instructions, see [data/README.md](data/README.md).
 
-Evaluation will be in the RunPod environment with all packages installed. `requirements.txt` is provided as a reference if you want to self-setup.
+Evaluation will be in the RunPod environment with all packages installed. For local self-setup, prefer `uv sync`; `requirements.txt` is still provided as a reference.
 
 ## FAQ
 

@@ -139,7 +139,11 @@ module avail              # Now shows DL-specific modules
 
 ## 6. Python / uv
 
-We use **[uv](https://docs.astral.sh/uv/)** for dependency management. It is already installed in the project.
+We use **[uv](https://docs.astral.sh/uv/)** for dependency management. `uv` is not bundled in the repository, so install it first if it is missing:
+
+```bash
+curl -LsSf https://astral.sh/uv/install.sh | sh
+```
 
 ```bash
 uv sync                   # Install deps from pyproject.toml

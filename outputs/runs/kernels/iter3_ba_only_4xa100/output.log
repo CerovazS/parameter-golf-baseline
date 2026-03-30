@@ -1,0 +1,67 @@
+/leonardo/home/userexternal/lcerovaz/YENDRI/parameter-golf/outputs/runs/run_20260330_213524/run_20260330_213524.txt
+run_dir:/leonardo/home/userexternal/lcerovaz/YENDRI/parameter-golf/outputs/runs/run_20260330_213524
+metrics_logfile:/leonardo/home/userexternal/lcerovaz/YENDRI/parameter-golf/outputs/runs/run_20260330_213524/run_20260330_213524.jsonl
+val_bpb:enabled tokenizer_kind=sentencepiece tokenizer_path=./data/tokenizers/fineweb_1024_bpe.model
+train_loader:dataset:fineweb10B_sp1024 train_shards:1
+val_loader:shards pattern=./data/datasets/fineweb10B_sp1024/fineweb_val_*.bin tokens:62021632
+model_params:17059912
+world_size:4 grad_accum_steps:2
+sdp_backends:cudnn=False flash=True mem_efficient=False math=False
+attention_mode:gqa num_heads:8 num_kv_heads:4
+tie_embeddings:True embed_lr:0.05 head_lr:0.0 matrix_lr:0.04 scalar_lr:0.04
+train_batch_tokens:524288 train_seq_len:1024 iterations:2000 warmup_steps:20 max_wallclock_seconds:1200.000
+seed:1337
+warmup_step:1/20
+warmup_step:2/20
+warmup_step:3/20
+warmup_step:4/20
+warmup_step:5/20
+warmup_step:6/20
+warmup_step:7/20
+warmup_step:8/20
+warmup_step:9/20
+warmup_step:10/20
+warmup_step:11/20
+warmup_step:12/20
+warmup_step:13/20
+warmup_step:14/20
+warmup_step:15/20
+warmup_step:16/20
+warmup_step:17/20
+warmup_step:18/20
+warmup_step:19/20
+warmup_step:20/20
+step:0/2000 val_loss:6.9357 val_bpb:4.1077 train_time:0ms step_avg:0.01ms
+step:1/2000 train_loss:6.9366 train_time:160ms step_avg:159.87ms
+step:2/2000 train_loss:16.7159 train_time:329ms step_avg:164.44ms
+step:3/2000 train_loss:8.7546 train_time:523ms step_avg:174.41ms
+step:4/2000 train_loss:6.6182 train_time:718ms step_avg:179.57ms
+step:5/2000 train_loss:6.6449 train_time:911ms step_avg:182.19ms
+step:6/2000 train_loss:6.9485 train_time:1105ms step_avg:184.21ms
+step:7/2000 train_loss:6.3642 train_time:1297ms step_avg:185.23ms
+step:8/2000 train_loss:6.1708 train_time:1494ms step_avg:186.70ms
+step:9/2000 train_loss:6.0951 train_time:1679ms step_avg:186.52ms
+step:10/2000 train_loss:5.9798 train_time:1880ms step_avg:188.00ms
+step:200/2000 train_loss:2.8372 train_time:38480ms step_avg:192.40ms
+step:400/2000 train_loss:2.5434 train_time:76991ms step_avg:192.48ms
+step:600/2000 train_loss:2.4181 train_time:115640ms step_avg:192.73ms
+step:800/2000 train_loss:2.2529 train_time:154236ms step_avg:192.79ms
+step:1000/2000 train_loss:2.6526 train_time:192717ms step_avg:192.72ms
+step:1000/2000 val_loss:2.3517 val_bpb:1.3928 train_time:192747ms step_avg:192.75ms
+step:1200/2000 train_loss:2.1905 train_time:231296ms step_avg:192.75ms
+step:1400/2000 train_loss:2.2465 train_time:269885ms step_avg:192.78ms
+step:1600/2000 train_loss:2.2775 train_time:308421ms step_avg:192.76ms
+step:1800/2000 train_loss:2.2007 train_time:347068ms step_avg:192.82ms
+step:2000/2000 train_loss:2.2592 train_time:385680ms step_avg:192.84ms
+step:2000/2000 val_loss:2.3012 val_bpb:1.3629 train_time:385710ms step_avg:192.85ms
+peak memory allocated: 10207 MiB reserved: 10494 MiB
+Serialized model: /leonardo/home/userexternal/lcerovaz/YENDRI/parameter-golf/outputs/runs/run_20260330_213524/final_model.pt bytes:67224983
+Code size: 50242 bytes
+Total submission size: 67275225 bytes
+Serialized model int8+zlib: /leonardo/home/userexternal/lcerovaz/YENDRI/parameter-golf/outputs/runs/run_20260330_213524/final_model.int8.ptz bytes:15629101 (payload:17178912 raw_torch:17224025 payload_ratio:3.91x)
+Total submission size int8+zlib: 15679343 bytes
+final_int8_zlib_roundtrip val_loss:2.3045 val_bpb:1.3648 eval_time:5648ms
+final_int8_zlib_roundtrip_exact val_loss:2.30448643 val_bpb:1.36484667
+
+Run complete.  Generate dashboard:
+  python3 tools/dashboard.py

@@ -17,4 +17,5 @@ dependencies = [
     "triton>=3.6.0",
     "nvitop>=1.6.2",
     "plotly>=6.6.0",
+    "matplotlib>=3.10.8",
 ]

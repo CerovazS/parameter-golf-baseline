@@ -148,16 +148,46 @@ See `train_gpt.py` `Hyperparameters` class for all configurable environment vari
 
 See `LOGGING.md` for full documentation.
 
-**Launch a tracked experiment** (zero overhead on training):
+### MANDATORY: Every run MUST use the logging wrapper
+
+**Never call `torchrun` or `sbatch` directly without going through `tools/launch_run.sh`.**
+
+Every training run — interactive, batch, single-GPU, multi-GPU — must be launched via:
+
 ```bash
-HYPOTHESIS="Test higher Muon LR" MATRIX_LR=0.06 ./tools/launch_run.sh --gpus 1
+HYPOTHESIS="<why this run exists>" [ENV_OVERRIDES] ./tools/launch_run.sh [OPTIONS]
 ```
 
-**Generate dashboard**:
+`HYPOTHESIS` is required. It must clearly state the scientific motivation or
+change being tested. Do not leave it empty or generic.
+
+**Examples:**
+```bash
+# Interactive single GPU
+HYPOTHESIS="Baseline: default hyperparams on 1xA100" \
+  ./tools/launch_run.sh --gpus 1
+
+# Hyperparameter sweep
+HYPOTHESIS="Higher Muon LR (0.04→0.08) to test faster convergence" \
+  MATRIX_LR=0.08 ./tools/launch_run.sh --gpus 4
+
+# Architecture change
+HYPOTHESIS="Add 2 extra layers (9→11) to test capacity vs size tradeoff" \
+  NUM_LAYERS=11 ./tools/launch_run.sh --gpus 4 --baseline baseline_4xA100_...
+
+# Via SLURM batch (scripts already call launch_run.sh internally)
+HYPOTHESIS="Baseline 4xA100 20min reference run" sbatch scripts/train_4xA100.sh
+```
+
+**What the wrapper does (zero training overhead):**
+- Creates a unique run directory on `$FAST` scratch
+- Snapshots source code (`train_gpt.py`, kernels, launcher) into `code/`
+- Writes `meta.json` with hypothesis, hyperparams, GPU info, git SHA
+- Tees all output to `output.log` / `error.log` in the run dir
+- Finalizes `meta.json` with BPB, throughput, artifact size after training
+- SLURM scripts additionally copy `.out`/`.err` logs into the run dir
+
+**Generate dashboard** after any run:
 ```bash
 uv run python3 tools/dashboard.py
 ```
-
-The system writes `meta.json` before/after training via `tools/golf_meta.py`,
-stores artifacts on `$FAST` scratch with symlinks in `outputs/runs/`, and
-produces a self-contained HTML dashboard. No training code modifications needed.

@@ -1,0 +1,57 @@
+/leonardo_work/IscrC_YENDRI/lcerovaz/parameter-golf/outputs/runs/run_20260330_171831/run_20260330_171831.txt
+run_dir:/leonardo_work/IscrC_YENDRI/lcerovaz/parameter-golf/outputs/runs/run_20260330_171831
+metrics_logfile:/leonardo_work/IscrC_YENDRI/lcerovaz/parameter-golf/outputs/runs/run_20260330_171831/run_20260330_171831.jsonl
+val_bpb:enabled tokenizer_kind=sentencepiece tokenizer_path=./data/tokenizers/fineweb_1024_bpe.model
+train_loader:dataset:fineweb10B_sp1024 train_shards:1
+val_loader:shards pattern=./data/datasets/fineweb10B_sp1024/fineweb_val_*.bin tokens:62021632
+model_params:17059912
+world_size:1 grad_accum_steps:8
+sdp_backends:cudnn=False flash=True mem_efficient=False math=False
+attention_mode:gqa num_heads:8 num_kv_heads:4
+tie_embeddings:True embed_lr:0.05 head_lr:0.0 matrix_lr:0.04 scalar_lr:0.04
+train_batch_tokens:524288 train_seq_len:1024 iterations:300 warmup_steps:20 max_wallclock_seconds:3600.000
+seed:1337
+warmup_step:1/20
+warmup_step:2/20
+warmup_step:3/20
+warmup_step:4/20
+warmup_step:5/20
+warmup_step:6/20
+warmup_step:7/20
+warmup_step:8/20
+warmup_step:9/20
+warmup_step:10/20
+warmup_step:11/20
+warmup_step:12/20
+warmup_step:13/20
+warmup_step:14/20
+warmup_step:15/20
+warmup_step:16/20
+warmup_step:17/20
+warmup_step:18/20
+warmup_step:19/20
+warmup_step:20/20
+step:0/300 val_loss:6.9357 val_bpb:4.1077 train_time:0ms step_avg:0.01ms
+step:1/300 train_loss:6.9357 train_time:654ms step_avg:654.46ms
+step:2/300 train_loss:16.7414 train_time:1311ms step_avg:655.59ms
+step:3/300 train_loss:8.7539 train_time:1969ms step_avg:656.20ms
+step:4/300 train_loss:6.5875 train_time:2626ms step_avg:656.46ms
+step:5/300 train_loss:6.6521 train_time:3283ms step_avg:656.55ms
+step:6/300 train_loss:6.6994 train_time:3939ms step_avg:656.58ms
+step:7/300 train_loss:6.3345 train_time:4596ms step_avg:656.63ms
+step:8/300 train_loss:6.1822 train_time:5253ms step_avg:656.67ms
+step:9/300 train_loss:6.0834 train_time:5910ms step_avg:656.69ms
+step:10/300 train_loss:5.9943 train_time:6567ms step_avg:656.73ms
+step:200/300 train_loss:2.8133 train_time:131671ms step_avg:658.35ms
+step:300/300 val_loss:2.6700 val_bpb:1.5813 train_time:197494ms step_avg:658.31ms
+peak memory allocated: 10253 MiB reserved: 10374 MiB
+Serialized model: /leonardo_work/IscrC_YENDRI/lcerovaz/parameter-golf/outputs/runs/run_20260330_171831/final_model.pt bytes:67224983
+Code size: 49960 bytes
+Total submission size: 67274943 bytes
+Serialized model int8+zlib: /leonardo_work/IscrC_YENDRI/lcerovaz/parameter-golf/outputs/runs/run_20260330_171831/final_model.int8.ptz bytes:12219252 (payload:17178912 raw_torch:17224025 payload_ratio:3.91x)
+Total submission size int8+zlib: 12269212 bytes
+final_int8_zlib_roundtrip val_loss:2.6712 val_bpb:1.5821 eval_time:22526ms
+final_int8_zlib_roundtrip_exact val_loss:2.67123683 val_bpb:1.58205691
+
+Run complete.  Generate dashboard:
+  python3 tools/dashboard.py

@@ -1,0 +1,88 @@
+{
+  "run_id": "run_20260330_174214",
+  "hypothesis": "Iter-2 4xA100: Triton XXT + ba_plus_cAA in Newton-Schulz. Both matmul ops fused with symmetry-exploiting Triton kernels. No torch.compile on zeropower.",
+  "train_script": "train_gpt.py",
+  "baseline_ref": null,
+  "started_at": "2026-03-30T17:42:15",
+  "finished_at": "2026-03-30T17:53:25",
+  "status": "completed",
+  "gpu": {
+    "name": "NVIDIA A100-SXM-64GB",
+    "memory_mib": 65536,
+    "count": 4
+  },
+  "slurm": {
+    "job_id": "38708789",
+    "partition": "boost_usr_prod",
+    "node": "lrdn0485",
+    "cpus_per_task": "32",
+    "gpus_on_node": "4"
+  },
+  "git": {
+    "commit": "a055cff",
+    "branch": "kernels",
+    "dirty": true
+  },
+  "hyperparameters": {
+    "DATA_PATH": "./data/datasets/fineweb10B_sp1024",
+    "TOKENIZER_PATH": "./data/tokenizers/fineweb_1024_bpe.model",
+    "SEED": 1337,
+    "ITERATIONS": 2000,
+    "WARMDOWN_ITERS": 1200,
+    "WARMUP_STEPS": 20,
+    "TRAIN_BATCH_TOKENS": 524288,
+    "TRAIN_SEQ_LEN": 1024,
+    "MAX_WALLCLOCK_SECONDS": 1200.0,
+    "VAL_BATCH_SIZE": 524288,
+    "VAL_LOSS_EVERY": 1000,
+    "TRAIN_LOG_EVERY": 200,
+    "VOCAB_SIZE": 1024,
+    "NUM_LAYERS": 9,
+    "NUM_KV_HEADS": 4,
+    "MODEL_DIM": 512,
+    "NUM_HEADS": 8,
+    "MLP_MULT": 2,
+    "TIE_EMBEDDINGS": 1,
+    "ROPE_BASE": 10000.0,
+    "LOGIT_SOFTCAP": 30.0,
+    "QK_GAIN_INIT": 1.5,
+    "EMBED_LR": 0.6,
+    "HEAD_LR": 0.008,
+    "TIED_EMBED_LR": 0.05,
+    "TIED_EMBED_INIT_STD": 0.005,
+    "MATRIX_LR": 0.04,
+    "SCALAR_LR": 0.04,
+    "MUON_MOMENTUM": 0.95,
+    "MUON_BACKEND_STEPS": 5,
+    "MUON_MOMENTUM_WARMUP_START": 0.85,
+    "MUON_MOMENTUM_WARMUP_STEPS": 500,
+    "BETA1": 0.9,
+    "BETA2": 0.95,
+    "ADAM_EPS": 1e-08,
+    "GRAD_CLIP_NORM": 0.0
+  },
+  "env_overrides": {
+    "ITERATIONS": {
+      "default": 20000,
+      "value": 2000
+    },
+    "MAX_WALLCLOCK_SECONDS": {
+      "default": 600.0,
+      "value": 1200.0
+    }
+  },
+  "results": {
+    "final_val_bpb": 1.3598599076713682,
+    "final_val_loss": 2.296066491886641,
+    "final_int8_bpb": 1.3615092768060195,
+    "final_int8_loss": 2.2988513825812342,
+    "eval_time_ms": 5635.785209946334,
+    "total_steps": 2000,
+    "total_train_time_ms": 385633.2842570264,
+    "mean_tok_s": 3307810.4,
+    "peak_tok_s": 3511347.3,
+    "mean_step_ms": 158.86,
+    "artifact_bytes": 15625466,
+    "model_bytes": 67224983
+  }
+}

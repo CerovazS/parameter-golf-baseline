@@ -1,0 +1,74 @@
+╔══════════════════════════════════════════════════════╗
+║  Parameter Golf — run_20260330_174215
+║  Script:     train_gpt_iter1.py
+║  GPUs:       4
+║  Run dir:    /leonardo/home/userexternal/lcerovaz/YENDRI/parameter-golf/outputs/runs/run_20260330_174215
+║  Hypothesis: Iter-1 4xA100: Triton XXT replaces X@X.T in Newton-Schulz (symmetric matmul, ~2x fewer tiles). No torch.compile on zeropower.
+╚══════════════════════════════════════════════════════╝
+/leonardo/home/userexternal/lcerovaz/YENDRI/parameter-golf/outputs/runs/run_20260330_174215/run_20260330_174215.txt
+run_dir:/leonardo/home/userexternal/lcerovaz/YENDRI/parameter-golf/outputs/runs/run_20260330_174215
+metrics_logfile:/leonardo/home/userexternal/lcerovaz/YENDRI/parameter-golf/outputs/runs/run_20260330_174215/run_20260330_174215.jsonl
+val_bpb:enabled tokenizer_kind=sentencepiece tokenizer_path=./data/tokenizers/fineweb_1024_bpe.model
+train_loader:dataset:fineweb10B_sp1024 train_shards:1
+val_loader:shards pattern=./data/datasets/fineweb10B_sp1024/fineweb_val_*.bin tokens:62021632
+model_params:17059912
+world_size:4 grad_accum_steps:2
+sdp_backends:cudnn=False flash=True mem_efficient=False math=False
+attention_mode:gqa num_heads:8 num_kv_heads:4
+tie_embeddings:True embed_lr:0.05 head_lr:0.0 matrix_lr:0.04 scalar_lr:0.04
+train_batch_tokens:524288 train_seq_len:1024 iterations:2000 warmup_steps:20 max_wallclock_seconds:1200.000
+seed:1337
+warmup_step:1/20
+warmup_step:2/20
+warmup_step:3/20
+warmup_step:4/20
+warmup_step:5/20
+warmup_step:6/20
+warmup_step:7/20
+warmup_step:8/20
+warmup_step:9/20
+warmup_step:10/20
+warmup_step:11/20
+warmup_step:12/20
+warmup_step:13/20
+warmup_step:14/20
+warmup_step:15/20
+warmup_step:16/20
+warmup_step:17/20
+warmup_step:18/20
+warmup_step:19/20
+warmup_step:20/20
+step:0/2000 val_loss:6.9357 val_bpb:4.1077 train_time:0ms step_avg:0.02ms
+step:1/2000 train_loss:6.9366 train_time:168ms step_avg:168.18ms
+step:2/2000 train_loss:16.7161 train_time:351ms step_avg:175.32ms
+step:3/2000 train_loss:8.7547 train_time:542ms step_avg:180.76ms
+step:4/2000 train_loss:6.6182 train_time:738ms step_avg:184.60ms
+step:5/2000 train_loss:6.6450 train_time:929ms step_avg:185.81ms
+step:6/2000 train_loss:6.9480 train_time:1131ms step_avg:188.44ms
+step:7/2000 train_loss:6.3645 train_time:1324ms step_avg:189.16ms
+step:8/2000 train_loss:6.1710 train_time:1519ms step_avg:189.82ms
+step:9/2000 train_loss:6.0953 train_time:1712ms step_avg:190.21ms
+step:10/2000 train_loss:5.9798 train_time:1899ms step_avg:189.91ms
+step:200/2000 train_loss:2.8343 train_time:38869ms step_avg:194.35ms
+step:400/2000 train_loss:2.5393 train_time:77674ms step_avg:194.19ms
+step:600/2000 train_loss:2.4178 train_time:116573ms step_avg:194.29ms
+step:800/2000 train_loss:2.2495 train_time:155312ms step_avg:194.14ms
+step:1000/2000 train_loss:2.6526 train_time:194073ms step_avg:194.07ms
+step:1000/2000 val_loss:2.3507 val_bpb:1.3922 train_time:194089ms step_avg:194.09ms
+step:1200/2000 train_loss:2.1890 train_time:232888ms step_avg:194.07ms
+step:1400/2000 train_loss:2.2449 train_time:271778ms step_avg:194.13ms
+step:1600/2000 train_loss:2.2737 train_time:310673ms step_avg:194.17ms
+step:1800/2000 train_loss:2.2026 train_time:349589ms step_avg:194.22ms
+step:2000/2000 train_loss:2.2628 train_time:388412ms step_avg:194.21ms
+step:2000/2000 val_loss:2.2977 val_bpb:1.3608 train_time:388432ms step_avg:194.22ms
+peak memory allocated: 10207 MiB reserved: 10494 MiB
+Serialized model: /leonardo/home/userexternal/lcerovaz/YENDRI/parameter-golf/outputs/runs/run_20260330_174215/final_model.pt bytes:67224983
+Code size: 50260 bytes
+Total submission size: 67275243 bytes
+Serialized model int8+zlib: /leonardo/home/userexternal/lcerovaz/YENDRI/parameter-golf/outputs/runs/run_20260330_174215/final_model.int8.ptz bytes:15632418 (payload:17178912 raw_torch:17224025 payload_ratio:3.91x)
+Total submission size int8+zlib: 15682678 bytes
+final_int8_zlib_roundtrip val_loss:2.3010 val_bpb:1.3628 eval_time:5731ms
+final_int8_zlib_roundtrip_exact val_loss:2.30096189 val_bpb:1.36275924
+
+Run complete.  Generate dashboard:
+  python3 tools/dashboard.py

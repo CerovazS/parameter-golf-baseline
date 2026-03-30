@@ -27,7 +27,7 @@ import torch.distributed as dist
 import torch.nn.functional as F
 from torch import Tensor, nn
 from torch.nn.parallel import DistributedDataParallel as DDP
-from triton_kernels import XXT
+from triton_kernels import XXT, ba_plus_cAA
 
 # -----------------------------
 # HYPERPARAMETERS
@@ -108,9 +108,10 @@ def zeropower_via_newtonschulz5(G: Tensor, steps: int = 10, eps: float = 1e-7) -
         X = X.T
     M = X.size(0)
     A = torch.empty((M, M), device=X.device, dtype=X.dtype)
+    B = torch.empty((M, M), device=X.device, dtype=X.dtype)
     for _ in range(steps):
         XXT(X, A)
-        B = b * A + c * A @ A
+        ba_plus_cAA(A, alpha=c, beta=b, out=B)  # B = c*A@A + b*A (A symmetric)
         X = a * X + B @ X
     return X.T if transposed else X
 

@@ -27,6 +27,7 @@ import torch.distributed as dist
 import torch.nn.functional as F
 from torch import Tensor, nn
 from torch.nn.parallel import DistributedDataParallel as DDP
+from triton_kernels import XXT
 
 # -----------------------------
 # HYPERPARAMETERS
@@ -98,14 +99,17 @@ class Hyperparameters:
 def zeropower_via_newtonschulz5(G: Tensor, steps: int = 10, eps: float = 1e-7) -> Tensor:
     # Orthogonalize a 2D update matrix with a fast Newton-Schulz iteration.
     # Muon uses this to normalize matrix-shaped gradients before applying them.
+    # XXT: Triton kernel for symmetric A = X @ X.T (exploits symmetry, ~2x fewer tiles).
     a, b, c = (3.4445, -4.7750, 2.0315)
     X = G.bfloat16()
     X /= X.norm() + eps
     transposed = G.size(0) > G.size(1)
     if transposed:
         X = X.T
+    M = X.size(0)
+    A = torch.empty((M, M), device=X.device, dtype=X.dtype)
     for _ in range(steps):
-        A = X @ X.T
+        XXT(X, A)
         B = b * A + c * A @ A
         X = a * X + B @ X
     return X.T if transposed else X
@@ -735,7 +739,8 @@ def main() -> None:
 
     code = Path(__file__).read_text(encoding="utf-8")
     args = Hyperparameters()
-    zeropower_via_newtonschulz5 = torch.compile(zeropower_via_newtonschulz5)
+    # Note: torch.compile removed — zeropower_via_newtonschulz5 now uses the Triton XXT
+    # kernel which is already JIT-compiled; compile() would conflict with Triton dispatch.
 
     # -----------------------------
     # DISTRIBUTED + CUDA SETUP

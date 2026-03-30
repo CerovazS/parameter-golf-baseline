@@ -1,6 +1,8 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+This file provides project-specific guidance to Claude Code when working in this repository.
+
+It overrides the global `~/.claude/CLAUDE.md` with instructions specific to the Parameter Golf challenge.
 
 ## What This Is
 
@@ -64,9 +66,98 @@ Binary shards (`.bin`): 256-int32 header (magic, version, num_tokens) followed b
 - No external downloads during evaluation; no validation data access during training
 - Record submissions must beat SOTA by ≥0.005 nats with p<0.01 (3 seeds recommended)
 
-## Leonardo HPC Notes
+## Leonardo HPC Workflow
 
-- Compute nodes have no internet — set `http_proxy`/`https_proxy` to squid proxy on login01
-- Partition: `boost_usr_prod`, account: `IscrC_TVU`, GPUs: A100 64GB
-- SLURM logs go to `slurm/` directory
-- Use `module load cuda/12.2` before training
+### Interactive Development (PREFERRED for this project)
+
+**When developing, debugging, or experimenting with Parameter Golf:**
+
+1. **Start an interactive GPU session** instead of submitting batch jobs:
+   ```bash
+   srun -p boost_usr_prod -A IscrC_TVU --gres=gpu:1 --mem=40G --time=2:00:00 --pty bash
+   ```
+
+2. **Load CUDA**:
+   ```bash
+   module load cuda/12.2
+   ```
+
+3. **Set up internet access** (ask for the port):
+   ```bash
+   export http_proxy='http://login01:<PORT>'
+   export https_proxy='http://login01:<PORT>'
+   ```
+
+4. **Navigate to project**:
+   ```bash
+   cd /leonardo_work/IscrC_YENDRI/lcerovaz/parameter-golf
+   ```
+
+5. **Run experiments interactively**:
+   ```bash
+   # Single GPU test
+   RUN_ID=test ITERATIONS=200 MAX_WALLCLOCK_SECONDS=3600 torchrun --standalone --nproc_per_node=1 train_gpt.py
+   
+   # Multi-GPU if available
+   torchrun --standalone --nproc_per_node=2 train_gpt.py
+   ```
+
+6. **Monitor GPU usage** (from another terminal):
+   ```bash
+   squeue -u $USER  # Get job ID
+   srun --jobid <JOB_ID> --overlap --pty bash -lc 'watch -n 1 nvidia-smi'
+   ```
+
+### When to Use Batch Jobs
+
+**Only use `sbatch` for:**
+- Final production runs for submission
+- Long training runs (>2 hours) after validation
+- Multiple parallel experiments (hyperparameter sweeps)
+
+### Development Workflow
+
+1. **Implement changes** to `train_gpt.py` locally or via interactive session
+2. **Test in interactive mode** with small iterations (e.g., `ITERATIONS=200`)
+3. **Validate convergence** and check artifact size
+4. **Only after validation**, submit batch job for full 10-minute run:
+   ```bash
+   sbatch scripts/train_1xA100.sh
+   ```
+
+### Cluster Configuration
+
+- **Partition**: `boost_usr_prod`
+- **Account**: `IscrC_TVU`
+- **GPUs**: A100 64GB (typically request 1, up to 4 available per node)
+- **SLURM logs**: `slurm/` directory
+- **Internet**: Compute nodes require squid proxy on login01
+- **Max walltime**: 24 hours (but challenge limit is 10 minutes + 10 minutes eval)
+
+### Key Environment Variables for Parameter Golf
+
+```bash
+RUN_ID=<experiment_name>           # Default: generated timestamp
+ITERATIONS=<num_iters>              # Default: defined in Hyperparameters class
+MAX_WALLCLOCK_SECONDS=600          # Challenge limit: 600 seconds (10 min)
+```
+
+See `train_gpt.py` `Hyperparameters` class for all configurable environment variables.
+
+## Experiment Logging
+
+See `LOGGING.md` for full documentation.
+
+**Launch a tracked experiment** (zero overhead on training):
+```bash
+HYPOTHESIS="Test higher Muon LR" MATRIX_LR=0.06 ./tools/launch_run.sh --gpus 1
+```
+
+**Generate dashboard**:
+```bash
+uv run python3 tools/dashboard.py
+```
+
+The system writes `meta.json` before/after training via `tools/golf_meta.py`,
+stores artifacts on `$FAST` scratch with symlinks in `outputs/runs/`, and
+produces a self-contained HTML dashboard. No training code modifications needed.

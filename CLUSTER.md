@@ -104,6 +104,20 @@ sacct -j <job_id>         # Job accounting info after completion
 srun --pty bash           # Interactive shell on compute node
 ```
 
+### Inspect GPU usage inside a running job
+
+If `nvitop` is installed, attach to the allocated node for a running job and open it directly:
+
+```bash
+srun --jobid 38586553 --overlap --pty bash -lc 'cd /leonardo_work/IscrC_YENDRI/lcerovaz/parameter-golf && uv run nvitop'
+```
+
+Fallback with `nvidia-smi`:
+
+```bash
+srun --jobid <job_id> --overlap --pty bash -lc 'watch -n 1 nvidia-smi'
+```
+
 ### Interactive GPU session
 
 ```bash

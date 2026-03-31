@@ -28,7 +28,7 @@ the unmodified Newton-Schulz implementation:
 ## Repository
 
 - **Branch**: `kernels`
-- **Commit**: `{{COMMIT_SHA}}`
+- **Commit**: `994f7cb0b2f348ddb708190b4c7f3818f2eda551`
 - **Cluster**: Leonardo (CINECA), partition `boost_usr_prod`, account `IscrC_YENDRI`
 
 ---

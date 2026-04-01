@@ -30,21 +30,15 @@ import torch.distributed as dist
 import torch.nn.functional as F
 from torch import Tensor, nn
 from torch.nn.parallel import DistributedDataParallel as DDP
+from gram_newton_schulz import Muon as DaoMuon, YOU_COEFFICIENTS
 
 # -----------------------------
-# GRAM NEWTON-SCHULZ COEFFICIENTS
+# GRAM NEWTON-SCHULZ (Dao-AILab)
 # -----------------------------
-# YOU_COEFFICIENTS (@YouJiacheng) — time-varying, designed for Gram NS pure-PyTorch path.
-# Empirically verified on RTX 5090 (sm_120): orth_err=0.76 vs 4.2 Polar Express vs 6.4 std NS.
-# Note: Polar Express coefficients are optimised for the quack CUTLASS kernel path
-# (sm_90/sm_100/sm_110), which is not supported on RTX 5090 (sm_120 consumer Blackwell).
-GRAM_NS_COEFFICIENTS: list[tuple[float, float, float]] = [
-    (4.0848, -6.8946, 2.9270),
-    (3.9505, -6.3029, 2.6377),
-    (3.7418, -5.5913, 2.3037),
-    (2.8769, -3.1427, 1.2046),
-    (2.8366, -3.0525, 1.2012),
-]
+# Using the official Muon optimizer from Dao-AILab/gram-newton-schulz.
+# CuTe-DSL symmetric GEMM kernels for H100/Blackwell (sm_90+).
+# The Dao-AILab Muon handles orthogonalization, LR adjustment, and
+# scalar param forwarding internally.
 
 # -----------------------------
 # HYPERPARAMETERS
@@ -113,133 +107,9 @@ class Hyperparameters:
 # As borrowed from modded-nanogpt
 # Background on Muon: https://kellerjordan.github.io/posts/muon/
 
-def gram_newton_schulz(G: Tensor, steps: int = 5, eps: float = 1e-7) -> Tensor:
-    """
-    Gram-Newton-Schulz orthogonalization (replaces zeropower_via_newtonschulz5).
-
-    Instead of iterating on the full rectangular matrix X ∈ R^(n×m), iterates on
-    the Gram matrix R = XXᵀ ∈ R^(n×n) and separately accumulates the orthogonal
-    factor Q. Only two rectangular GEMMs total (init + finalize) vs one per
-    iteration in standard NS.
-
-    Key differences vs standard NS:
-    - Time-varying Polar Express coefficients (5 distinct [a,b,c] triples)
-    - float16 not bfloat16: better mantissa precision reduces spurious negative eigenvalues
-    - Restart after iteration 2 (0-indexed): prevents eigenvalue divergence in fp16
-    - Falls back to standard 3-GEMM loop for square matrices (no Gram benefit there)
-
-    FLOPs: ~38n^3 vs ~65n^3 for standard NS at T=5, aspect ratio alpha=4.
-    """
-    coeff_list = GRAM_NS_COEFFICIENTS[:steps]
-
-    X = G.to(torch.float16)
-    X = X / (X.norm() + eps)
-
-    transposed = X.shape[0] > X.shape[1]
-    if transposed:
-        X = X.T
-
-    n, m = X.shape
-
-    if n == m:
-        # Square matrix: standard 3-GEMM loop (Gram offers no benefit for square matrices)
-        for a, b, c in coeff_list:
-            A = X @ X.T
-            B = b * A + c * (A @ A)
-            X = a * X + B @ X
-    else:
-        # Non-square: iterate on Gram matrix R = XXᵀ ∈ R^(n×n)
-        R = X @ X.T  # one rectangular GEMM at init
-        Q = torch.eye(n, dtype=X.dtype, device=X.device)
-
-        _restart_iters = {2}
-        for i, (a, b, c) in enumerate(coeff_list):
-            if i == 2:
-                # Restart: materialize accumulated Q into X, recompute Gram.
-                # Prevents fp16 eigenvalue divergence across iterations.
-                X = Q @ X
-                R = X @ X.T
-                Q = torch.eye(n, dtype=X.dtype, device=X.device)
-
-            # Z = bR + cR²  (a*I term distributed into Q/R updates to avoid fp16 cancellation)
-            R2 = R @ R
-            Z = b * R + c * R2
-            # Q ← Q(Z + aI) = QZ + aQ
-            Q = Q @ Z + a * Q
-            # Skip R update when it will never be read:
-            #   - last iteration (R unused after loop), or
-            #   - next iteration is a restart (R recomputed from scratch)
-            if i < len(coeff_list) - 1 and (i + 1) not in _restart_iters:
-                # RZ = R(Z + aI) = RZ + aR
-                RZ = R @ Z + a * R
-                # R ← (Z + aI)RZ = Z@RZ + a*RZ
-                R = Z @ RZ + a * RZ
-
-        X = Q @ X  # single final rectangular GEMM
-
-    if transposed:
-        X = X.T
-
-    return X
-
-
-class Muon(torch.optim.Optimizer):
-    def __init__(self, params, lr: float, momentum: float, backend_steps: int, nesterov: bool = True):
-        super().__init__(
-            params,
-            dict(lr=lr, momentum=momentum, backend_steps=backend_steps, nesterov=nesterov),
-        )
-
-    @torch.no_grad()
-    def step(self, closure=None):
-        loss = None
-        if closure is not None:
-            with torch.enable_grad():
-                loss = closure()
-
-        distributed = dist.is_available() and dist.is_initialized()
-        world_size = dist.get_world_size() if distributed else 1
-        rank = dist.get_rank() if distributed else 0
-
-        for group in self.param_groups:
-            params = group["params"]
-            if not params:
-                continue
-            lr = group["lr"]
-            momentum = group["momentum"]
-            backend_steps = group["backend_steps"]
-            nesterov = group["nesterov"]
-
-            total_params = sum(int(p.numel()) for p in params)
-            updates_flat = torch.zeros(total_params, device=params[0].device, dtype=torch.bfloat16)
-
-            curr = 0
-            for i, p in enumerate(params):
-                if i % world_size == rank and p.grad is not None:
-                    g = p.grad
-                    state = self.state[p]
-                    if "momentum_buffer" not in state:
-                        state["momentum_buffer"] = torch.zeros_like(g)
-                    buf = state["momentum_buffer"]
-                    buf.mul_(momentum).add_(g)
-                    if nesterov:
-                        g = g.add(buf, alpha=momentum)
-                    g = gram_newton_schulz(g, steps=backend_steps)
-                    # Scale correction from Muon reference implementations.
-                    g *= max(1, g.size(0) / g.size(1)) ** 0.5
-                    updates_flat[curr : curr + p.numel()] = g.reshape(-1)
-                curr += p.numel()
-
-            if distributed:
-                dist.all_reduce(updates_flat, op=dist.ReduceOp.SUM)
-
-            curr = 0
-            for p in params:
-                g = updates_flat[curr : curr + p.numel()].view_as(p).to(dtype=p.dtype)
-                p.add_(g, alpha=-lr)
-                curr += p.numel()
-
-        return loss
+# Muon optimizer is now imported directly from Dao-AILab as DaoMuon.
+# No custom wrapper needed — the library handles orthogonalization,
+# LR adjustment (rms_norm), momentum, nesterov, and scalar params internally.
 
 
 # -----------------------------
@@ -803,11 +673,13 @@ class GPT(nn.Module):
 # -----------------------------
 
 def main() -> None:
-    global gram_newton_schulz
+    # The Dao-AILab GramNewtonSchulz uses @torch.compile(fullgraph=True, mode="reduce-overhead")
+    # which triggers recompilation for each distinct matrix shape. Increase cache limit
+    # to accommodate all weight shapes (4-6 unique shapes per model scale).
+    torch._dynamo.config.cache_size_limit = 64
 
     code = Path(__file__).read_text(encoding="utf-8")
     args = Hyperparameters()
-    gram_newton_schulz = torch.compile(gram_newton_schulz)
 
     # -----------------------------
     # DISTRIBUTED + CUDA SETUP
@@ -949,35 +821,40 @@ def main() -> None:
     if base_model.skip_weights.numel() > 0:
         scalar_params.append(base_model.skip_weights)
     token_lr = args.tied_embed_lr if args.tie_embeddings else args.embed_lr
-    optimizer_tok = torch.optim.Adam(
-        [{"params": [base_model.tok_emb.weight], "lr": token_lr, "base_lr": token_lr}],
-        betas=(args.beta1, args.beta2),
-        eps=args.adam_eps,
-        fused=True,
-    )
-    optimizer_muon = Muon(
-        matrix_params,
-        lr=args.matrix_lr,
-        momentum=args.muon_momentum,
-        backend_steps=args.muon_backend_steps,
-    )
-    for group in optimizer_muon.param_groups:
-        group["base_lr"] = args.matrix_lr
-    optimizer_scalar = torch.optim.Adam(
-        [{"params": scalar_params, "lr": args.scalar_lr, "base_lr": args.scalar_lr}],
-        betas=(args.beta1, args.beta2),
-        eps=args.adam_eps,
-        fused=True,
-    )
-    optimizers: list[torch.optim.Optimizer] = [optimizer_tok, optimizer_muon, optimizer_scalar]
+    # Build the scalar (Adam) optimizer for all non-matrix params: embeddings, norms, heads.
+    scalar_adam_params = [
+        {"params": [base_model.tok_emb.weight], "lr": token_lr, "base_lr": token_lr},
+        {"params": scalar_params, "lr": args.scalar_lr, "base_lr": args.scalar_lr},
+    ]
     if base_model.lm_head is not None:
-        optimizer_head = torch.optim.Adam(
-            [{"params": [base_model.lm_head.weight], "lr": args.head_lr, "base_lr": args.head_lr}],
-            betas=(args.beta1, args.beta2),
-            eps=args.adam_eps,
-            fused=True,
+        scalar_adam_params.append(
+            {"params": [base_model.lm_head.weight], "lr": args.head_lr, "base_lr": args.head_lr}
         )
-        optimizers.insert(1, optimizer_head)
+    scalar_optimizer = torch.optim.AdamW(
+        scalar_adam_params,
+        betas=(args.beta1, args.beta2),
+        eps=args.adam_eps,
+        weight_decay=0.0,
+        fused=True,
+    )
+    # Dao-AILab Muon: handles orthogonalization + scalar optimizer internally.
+    optimizer_muon = DaoMuon(
+        params=[{"params": matrix_params}],
+        lr=args.matrix_lr,
+        weight_decay=0.0,
+        momentum=args.muon_momentum,
+        nesterov=True,
+        adjust_lr="rms_norm",
+        ns_coefficients_preset="YOU_COEFFICIENTS",
+        ns_use_kernels=True,
+        scalar_optimizer=scalar_optimizer,
+    )
+    for group in optimizer_muon._muon_param_groups:
+        group["base_lr"] = args.matrix_lr
+    for group in scalar_optimizer.param_groups:
+        if "base_lr" not in group:
+            group["base_lr"] = group["lr"]
+    optimizers: list[torch.optim.Optimizer] = [optimizer_muon]
 
     n_params = sum(p.numel() for p in base_model.parameters())
     log0(f"model_params:{n_params}")
@@ -1118,12 +995,12 @@ def main() -> None:
 
         frac = min(step / args.muon_momentum_warmup_steps, 1.0) if args.muon_momentum_warmup_steps > 0 else 1.0
         muon_momentum = (1 - frac) * args.muon_momentum_warmup_start + frac * args.muon_momentum
-        for group in optimizer_muon.param_groups:
+        for group in optimizer_muon._muon_param_groups:
             group["momentum"] = muon_momentum
 
-        for opt in optimizers:
-            for group in opt.param_groups:
-                group["lr"] = group["base_lr"] * scale
+        # Scale LR for all param groups (Muon exposes combined muon + scalar groups)
+        for group in optimizer_muon.param_groups:
+            group["lr"] = group["base_lr"] * scale
 
         if args.grad_clip_norm > 0:
             torch.nn.utils.clip_grad_norm_(base_model.parameters(), args.grad_clip_norm)

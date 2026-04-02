@@ -144,6 +144,21 @@ MAX_WALLCLOCK_SECONDS=600          # Challenge limit: 600 seconds (10 min)
 
 See `train_gpt.py` `Hyperparameters` class for all configurable environment variables.
 
+## Console Logging Standard
+
+`train_gpt.py` exposes four module-level helpers backed by `rich.Console(force_terminal=True)` — `force_terminal=True` is required so colors survive the `tee` pipe in `launch_run.sh`:
+
+| Function | Color | When to use |
+|----------|-------|-------------|
+| `ok(msg)` | bold green | setup summaries, config lines, final results |
+| `info(msg)` | cyan | per-step training and validation logs |
+| `warn(msg)` | bold yellow + `WARN` prefix | early stops, anomalies, degraded conditions |
+| `error(msg)` | bold red + `ERROR` prefix | unrecoverable failures before raising |
+
+`log0(msg, console=True, level="info")` is the gating wrapper inside `main()`: it dispatches to the right helper for console output and writes plain text to the log file. Use `level="ok"` for all initialization lines, `level="info"` for step logs (the default), `level="warn"` for early-stop events.
+
+When adding new scripts, replicate the same four-function pattern at module level — do not introduce new color schemes or a different logging library.
+
 ## Experiment Logging
 
 See `LOGGING.md` for full documentation.

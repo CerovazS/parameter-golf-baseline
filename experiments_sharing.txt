@@ -1,0 +1,33 @@
+# Esperimenti weight sharing — train_gpt_sharing.py
+# Budget: 500 secondi di training (MAX_WALLCLOCK_SECONDS=500)
+# Lanciare dalla root del progetto dopo aver caricato il modulo CUDA e attivato il venv.
+
+# ── Baseline: sharing disabilitato ───────────────────────────────────────────
+HYPOTHESIS="Baseline no sharing: confronto diretto con train_gpt_sharing.py" \
+  SHARING_RANK_V=0 SHARING_RANK_O=0 \
+  MAX_WALLCLOCK_SECONDS=500 \
+  ./tools/launch_run.sh --script train_gpt_sharing.py --gpus 1
+
+# ── Solo O projection (proj) condivisa ───────────────────────────────────────
+HYPOTHESIS="SharedC solo O proj rank_o=256: O e' zero-init, test stabilita' training" \
+  SHARING_RANK_V=0 SHARING_RANK_O=256 \
+  MAX_WALLCLOCK_SECONDS=500 \
+  ./tools/launch_run.sh --script train_gpt_sharing.py --gpus 1
+
+# ── Solo V projection condivisa ──────────────────────────────────────────────
+HYPOTHESIS="SharedC solo V proj rank_v=128: test senza complicazione zero-init" \
+  SHARING_RANK_V=128 SHARING_RANK_O=0 \
+  MAX_WALLCLOCK_SECONDS=500 \
+  ./tools/launch_run.sh --script train_gpt_sharing.py --gpus 1
+
+# ── V + O condivise, rank standard ───────────────────────────────────────────
+HYPOTHESIS="SharedC V+O rank_v=128 rank_o=256: configurazione principale" \
+  SHARING_RANK_V=128 SHARING_RANK_O=256 \
+  MAX_WALLCLOCK_SECONDS=500 \
+  ./tools/launch_run.sh --script train_gpt_sharing.py --gpus 1
+
+# ── V + O condivise, rank piu' basso ─────────────────────────────────────────
+HYPOTHESIS="SharedC V+O rank_v=64 rank_o=128: test compressione aggressiva" \
+  SHARING_RANK_V=64 SHARING_RANK_O=128 \
+  MAX_WALLCLOCK_SECONDS=500 \
+  ./tools/launch_run.sh --script train_gpt_sharing.py --gpus 1

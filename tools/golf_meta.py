@@ -73,6 +73,13 @@ HYPERPARAM_SPEC: dict[str, tuple[type, object]] = {
     "BETA2": (float, 0.95),
     "ADAM_EPS": (float, 1e-8),
     "GRAD_CLIP_NORM": (float, 0.0),
+    # Weight-sharing (train_gpt_sharing.py)
+    "SHARING_RANK_V": (int, 0),
+    "SHARING_RANK_O": (int, 0),
+    "SHARING_RANK_Q": (int, 0),
+    "SHARING_RANK_MLP_FC": (int, 0),
+    "SHARING_RANK_MLP_PROJ": (int, 0),
+    "SHARING_NUM_PAIRS": (int, 1),
 }
 
 

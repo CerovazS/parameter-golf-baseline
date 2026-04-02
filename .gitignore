@@ -14,3 +14,7 @@ logs/
 *.code-workspace
 slurm/
 results/
+
+# Model artifacts — large files, never commit
+outputs/runs/**/*.pt
+outputs/runs/**/*.ptz

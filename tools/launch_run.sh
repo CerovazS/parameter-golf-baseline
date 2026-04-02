@@ -30,11 +30,12 @@ LOCAL_MODE=0
 
 while [[ $# -gt 0 ]]; do
     case $1 in
-        --script)   SCRIPT="$2"; shift 2;;
-        --gpus)     GPUS="$2"; shift 2;;
-        --run-id)   RUN_ID="$2"; shift 2;;
-        --baseline) BASELINE_REF="$2"; shift 2;;
-        --local)    LOCAL_MODE=1; shift;;
+        --script)     SCRIPT="$2"; shift 2;;
+        --gpus)       GPUS="$2"; shift 2;;
+        --run-id)     RUN_ID="$2"; shift 2;;
+        --baseline)   BASELINE_REF="$2"; shift 2;;
+        --hypothesis) HYPOTHESIS="$2"; shift 2;;
+        --local)      LOCAL_MODE=1; shift;;
         -h|--help)
             sed -n '2,/^$/p' "$0" | sed 's/^# \?//'
             exit 0;;

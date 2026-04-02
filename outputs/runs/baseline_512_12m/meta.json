@@ -1,0 +1,90 @@
+{
+  "run_id": "baseline_512_12m",
+  "hypothesis": "Baseline standard NS, dim=512 9L 8H, 1xH100, 12min wallclock",
+  "train_script": "train_gpt.py",
+  "baseline_ref": null,
+  "started_at": "2026-04-01T20:45:28",
+  "finished_at": "2026-04-01T21:00:11",
+  "status": "completed",
+  "gpu": {
+    "name": "NVIDIA H100 80GB HBM3",
+    "memory_mib": 81559,
+    "count": 1
+  },
+  "slurm": null,
+  "git": {
+    "commit": "9432f1c",
+    "branch": "gram_newton_schulz",
+    "dirty": true
+  },
+  "hyperparameters": {
+    "DATA_PATH": "./data/datasets/fineweb10B_sp1024",
+    "TOKENIZER_PATH": "./data/tokenizers/fineweb_1024_bpe.model",
+    "SEED": 1337,
+    "ITERATIONS": 100000,
+    "WARMDOWN_ITERS": 1200,
+    "WARMUP_STEPS": 20,
+    "TRAIN_BATCH_TOKENS": 524288,
+    "TRAIN_SEQ_LEN": 1024,
+    "MAX_WALLCLOCK_SECONDS": 720.0,
+    "VAL_BATCH_SIZE": 524288,
+    "VAL_LOSS_EVERY": 200,
+    "TRAIN_LOG_EVERY": 50,
+    "VOCAB_SIZE": 1024,
+    "NUM_LAYERS": 9,
+    "NUM_KV_HEADS": 4,
+    "MODEL_DIM": 512,
+    "NUM_HEADS": 8,
+    "MLP_MULT": 2,
+    "TIE_EMBEDDINGS": 1,
+    "ROPE_BASE": 10000.0,
+    "LOGIT_SOFTCAP": 30.0,
+    "QK_GAIN_INIT": 1.5,
+    "EMBED_LR": 0.6,
+    "HEAD_LR": 0.008,
+    "TIED_EMBED_LR": 0.05,
+    "TIED_EMBED_INIT_STD": 0.005,
+    "MATRIX_LR": 0.04,
+    "SCALAR_LR": 0.04,
+    "MUON_MOMENTUM": 0.95,
+    "MUON_BACKEND_STEPS": 5,
+    "MUON_MOMENTUM_WARMUP_START": 0.85,
+    "MUON_MOMENTUM_WARMUP_STEPS": 500,
+    "BETA1": 0.9,
+    "BETA2": 0.95,
+    "ADAM_EPS": 1e-08,
+    "GRAD_CLIP_NORM": 0.0
+  },
+  "env_overrides": {
+    "ITERATIONS": {
+      "default": 20000,
+      "value": 100000
+    },
+    "MAX_WALLCLOCK_SECONDS": {
+      "default": 600.0,
+      "value": 720.0
+    },
+    "VAL_LOSS_EVERY": {
+      "default": 1000,
+      "value": 200
+    },
+    "TRAIN_LOG_EVERY": {
+      "default": 200,
+      "value": 50
+    }
+  },
+  "results": {
+    "final_val_bpb": 1.297270637017618,
+    "final_val_loss": 2.190387130145777,
+    "final_int8_bpb": 1.298726690016028,
+    "final_int8_loss": 2.192845614642011,
+    "eval_time_ms": 10739.081451087259,
+    "total_steps": 1966,
+    "total_train_time_ms": 720012.0392908575,
+    "mean_tok_s": 1437197.7,
+    "peak_tok_s": 1579000.2,
+    "mean_step_ms": 365.97,
+    "artifact_bytes": 14920576,
+    "model_bytes": 67224983
+  }
+}

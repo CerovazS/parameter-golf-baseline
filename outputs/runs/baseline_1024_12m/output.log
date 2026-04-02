@@ -1,0 +1,70 @@
+/root/parameter-golf-baseline/outputs/runs/baseline_1024_12m/baseline_1024_12m.txt
+run_dir:/root/parameter-golf-baseline/outputs/runs/baseline_1024_12m
+metrics_logfile:/root/parameter-golf-baseline/outputs/runs/baseline_1024_12m/baseline_1024_12m.jsonl
+val_bpb:enabled tokenizer_kind=sentencepiece tokenizer_path=./data/tokenizers/fineweb_1024_bpe.model
+train_loader:dataset:fineweb10B_sp1024 train_shards:80
+val_loader:shards pattern=./data/datasets/fineweb10B_sp1024/fineweb_val_*.bin tokens:62021632
+model_params:110174464
+world_size:1 grad_accum_steps:8
+sdp_backends:cudnn=False flash=True mem_efficient=False math=False
+attention_mode:gqa num_heads:16 num_kv_heads:4
+tie_embeddings:True embed_lr:0.05 head_lr:0.0 matrix_lr:0.04 scalar_lr:0.04
+train_batch_tokens:524288 train_seq_len:1024 iterations:100000 warmup_steps:20 max_wallclock_seconds:720.000
+seed:1337
+warmup_step:1/20
+warmup_step:2/20
+warmup_step:3/20
+warmup_step:4/20
+warmup_step:5/20
+warmup_step:6/20
+warmup_step:7/20
+warmup_step:8/20
+warmup_step:9/20
+warmup_step:10/20
+warmup_step:11/20
+warmup_step:12/20
+warmup_step:13/20
+warmup_step:14/20
+warmup_step:15/20
+warmup_step:16/20
+warmup_step:17/20
+warmup_step:18/20
+warmup_step:19/20
+warmup_step:20/20
+step:0/100000 val_loss:7.0625 val_bpb:4.1828 train_time:0ms step_avg:0.02ms
+step:1/100000 train_loss:7.0624 train_time:1229ms step_avg:1229.49ms
+step:2/100000 train_loss:24.5055 train_time:2496ms step_avg:1248.15ms
+step:3/100000 train_loss:14.7803 train_time:3764ms step_avg:1254.68ms
+step:4/100000 train_loss:8.1015 train_time:5039ms step_avg:1259.68ms
+step:5/100000 train_loss:6.3597 train_time:6313ms step_avg:1262.55ms
+step:6/100000 train_loss:6.1959 train_time:7587ms step_avg:1264.42ms
+step:7/100000 train_loss:6.1069 train_time:8859ms step_avg:1265.51ms
+step:8/100000 train_loss:6.1952 train_time:10130ms step_avg:1266.27ms
+step:9/100000 train_loss:6.2156 train_time:11400ms step_avg:1266.71ms
+step:10/100000 train_loss:6.1933 train_time:12670ms step_avg:1267.04ms
+step:50/100000 train_loss:4.3216 train_time:63831ms step_avg:1276.62ms
+step:100/100000 train_loss:3.3913 train_time:127982ms step_avg:1279.82ms
+step:150/100000 train_loss:3.0285 train_time:192158ms step_avg:1281.05ms
+step:200/100000 train_loss:2.7080 train_time:256176ms step_avg:1280.88ms
+step:200/100000 val_loss:2.7524 val_bpb:1.6301 train_time:256177ms step_avg:1280.88ms
+step:250/100000 train_loss:2.6290 train_time:320180ms step_avg:1280.72ms
+step:300/100000 train_loss:2.4913 train_time:384156ms step_avg:1280.52ms
+step:350/100000 train_loss:2.4672 train_time:448082ms step_avg:1280.23ms
+step:400/100000 train_loss:2.2442 train_time:511988ms step_avg:1279.97ms
+step:400/100000 val_loss:2.4080 val_bpb:1.4261 train_time:511988ms step_avg:1279.97ms
+step:450/100000 train_loss:2.3524 train_time:576069ms step_avg:1280.15ms
+step:500/100000 train_loss:2.3390 train_time:639939ms step_avg:1279.88ms
+step:550/100000 train_loss:2.2159 train_time:703837ms step_avg:1279.70ms
+step:563/100000 val_loss:2.3044 val_bpb:1.3648 train_time:720463ms step_avg:1279.68ms
+stopping_early: wallclock_cap train_time:720463ms step:563/100000
+peak memory allocated: 34881 MiB reserved: 35058 MiB
+Serialized model: /root/parameter-golf-baseline/outputs/runs/baseline_1024_12m/final_model.pt bytes:438660699
+Code size: 49960 bytes
+Total submission size: 438710659 bytes
+Serialized model int8+zlib: /root/parameter-golf-baseline/outputs/runs/baseline_1024_12m/final_model.int8.ptz bytes:56919543 (payload:110578688 raw_torch:110658873 payload_ratio:3.97x)
+Total submission size int8+zlib: 56969503 bytes
+final_int8_zlib_roundtrip val_loss:2.3200 val_bpb:1.3741 eval_time:42643ms
+final_int8_zlib_roundtrip_exact val_loss:2.32003081 val_bpb:1.37405293
+
+Run complete.  Generate dashboard:
+  python3 tools/dashboard.py

@@ -14,3 +14,5 @@ logs/
 *.code-workspace
 slurm/
 results/
+*.pt
+*.ptz

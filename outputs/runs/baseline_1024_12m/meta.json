@@ -1,0 +1,102 @@
+{
+  "run_id": "baseline_1024_12m",
+  "hypothesis": "Baseline standard NS, dim=1024 16L 16H, 1xH100, 12min wallclock",
+  "train_script": "train_gpt.py",
+  "baseline_ref": null,
+  "started_at": "2026-04-01T21:47:54",
+  "finished_at": "2026-04-01T22:05:51",
+  "status": "completed",
+  "gpu": {
+    "name": "NVIDIA H100 80GB HBM3",
+    "memory_mib": 81559,
+    "count": 1
+  },
+  "slurm": null,
+  "git": {
+    "commit": "9432f1c",
+    "branch": "gram_newton_schulz",
+    "dirty": true
+  },
+  "hyperparameters": {
+    "DATA_PATH": "./data/datasets/fineweb10B_sp1024",
+    "TOKENIZER_PATH": "./data/tokenizers/fineweb_1024_bpe.model",
+    "SEED": 1337,
+    "ITERATIONS": 100000,
+    "WARMDOWN_ITERS": 1200,
+    "WARMUP_STEPS": 20,
+    "TRAIN_BATCH_TOKENS": 524288,
+    "TRAIN_SEQ_LEN": 1024,
+    "MAX_WALLCLOCK_SECONDS": 720.0,
+    "VAL_BATCH_SIZE": 524288,
+    "VAL_LOSS_EVERY": 200,
+    "TRAIN_LOG_EVERY": 50,
+    "VOCAB_SIZE": 1024,
+    "NUM_LAYERS": 16,
+    "NUM_KV_HEADS": 4,
+    "MODEL_DIM": 1024,
+    "NUM_HEADS": 16,
+    "MLP_MULT": 2,
+    "TIE_EMBEDDINGS": 1,
+    "ROPE_BASE": 10000.0,
+    "LOGIT_SOFTCAP": 30.0,
+    "QK_GAIN_INIT": 1.5,
+    "EMBED_LR": 0.6,
+    "HEAD_LR": 0.008,
+    "TIED_EMBED_LR": 0.05,
+    "TIED_EMBED_INIT_STD": 0.005,
+    "MATRIX_LR": 0.04,
+    "SCALAR_LR": 0.04,
+    "MUON_MOMENTUM": 0.95,
+    "MUON_BACKEND_STEPS": 5,
+    "MUON_MOMENTUM_WARMUP_START": 0.85,
+    "MUON_MOMENTUM_WARMUP_STEPS": 500,
+    "BETA1": 0.9,
+    "BETA2": 0.95,
+    "ADAM_EPS": 1e-08,
+    "GRAD_CLIP_NORM": 0.0
+  },
+  "env_overrides": {
+    "ITERATIONS": {
+      "default": 20000,
+      "value": 100000
+    },
+    "MAX_WALLCLOCK_SECONDS": {
+      "default": 600.0,
+      "value": 720.0
+    },
+    "VAL_LOSS_EVERY": {
+      "default": 1000,
+      "value": 200
+    },
+    "TRAIN_LOG_EVERY": {
+      "default": 200,
+      "value": 50
+    },
+    "NUM_LAYERS": {
+      "default": 9,
+      "value": 16
+    },
+    "MODEL_DIM": {
+      "default": 512,
+      "value": 1024
+    },
+    "NUM_HEADS": {
+      "default": 8,
+      "value": 16
+    }
+  },
+  "results": {
+    "final_val_bpb": 1.3648107896511292,
+    "final_val_loss": 2.3044258487254496,
+    "final_int8_bpb": 1.3740529289641552,
+    "final_int8_loss": 2.320030813818012,
+    "eval_time_ms": 42643.59115494881,
+    "total_steps": 563,
+    "total_train_time_ms": 720462.2080209665,
+    "mean_tok_s": 409789.4,
+    "peak_tok_s": 426433.4,
+    "mean_step_ms": 1279.43,
+    "artifact_bytes": 56919543,
+    "model_bytes": 438660699
+  }
+}

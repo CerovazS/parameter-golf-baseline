@@ -1,0 +1,4 @@
+{"event":"val_step","step":0,"iterations":3,"train_time_ms":0.014532008208334446,"step_avg_ms":0.014532008208334446,"val_loss":6.93569254626404,"val_bpb":4.107707794581264}
+{"event":"train_step","step":1,"iterations":3,"train_time_ms":1973.8680160371587,"step_time_ms":1973.8529439782724,"step_avg_ms":1973.8680160371587,"train_loss":6.935729503631592,"tok_s":265616.54534572625}
+{"event":"train_step","step":2,"iterations":3,"train_time_ms":3356.126793078147,"step_time_ms":1378.9967310149223,"step_avg_ms":1678.0633965390734,"train_loss":5.902799606323242,"tok_s":380195.24499824696}
+{"event":"val_step","step":2,"iterations":3,"train_time_ms":3358.9942780090496,"step_avg_ms":1679.4971390045248,"val_loss":5.788768895849214,"val_bpb":3.428435005718051}

@@ -3,9 +3,6 @@ The `train_gpt.py` and `train_gpt_mlx.py` scripts are intended as good launching
 
 Hard stop: To keep readable for newcomers, let's make sure `train_gpt.py` and `train_gpt_mlx.py` never are longer than 1500 lines.
 """
-# train_gpt_exp.py — Experimental: Gram-Newton-Schulz Muon (arxiv 2505.16932)
-# Replaces zeropower_via_newtonschulz5 with gram_newton_schulz.
-# See plan.md for full change description.
 
 from __future__ import annotations
 
@@ -30,15 +27,6 @@ import torch.distributed as dist
 import torch.nn.functional as F
 from torch import Tensor, nn
 from torch.nn.parallel import DistributedDataParallel as DDP
-from gram_newton_schulz import Muon as DaoMuon, YOU_COEFFICIENTS
-
-# -----------------------------
-# GRAM NEWTON-SCHULZ (Dao-AILab)
-# -----------------------------
-# Using the official Muon optimizer from Dao-AILab/gram-newton-schulz.
-# CuTe-DSL symmetric GEMM kernels for H100/Blackwell (sm_90+).
-# The Dao-AILab Muon handles orthogonalization, LR adjustment, and
-# scalar param forwarding internally.
 
 # -----------------------------
 # HYPERPARAMETERS
@@ -101,19 +89,89 @@ class Hyperparameters:
     grad_clip_norm = float(os.environ.get("GRAD_CLIP_NORM", 0.0))
 
 # -----------------------------
-# MUON OPTIMIZER
+# MUON OPTIMIZER 
 # -----------------------------
-#
+# 
 # As borrowed from modded-nanogpt
 # Background on Muon: https://kellerjordan.github.io/posts/muon/
 
-# Muon optimizer is now imported directly from Dao-AILab as DaoMuon.
-# No custom wrapper needed — the library handles orthogonalization,
-# LR adjustment (rms_norm), momentum, nesterov, and scalar params internally.
+def zeropower_via_newtonschulz5(G: Tensor, steps: int = 10, eps: float = 1e-7) -> Tensor:
+    # Orthogonalize a 2D update matrix with a fast Newton-Schulz iteration.
+    # Muon uses this to normalize matrix-shaped gradients before applying them.
+    a, b, c = (3.4445, -4.7750, 2.0315)
+    X = G.bfloat16()
+    X /= X.norm() + eps
+    transposed = G.size(0) > G.size(1)
+    if transposed:
+        X = X.T
+    for _ in range(steps):
+        A = X @ X.T
+        B = b * A + c * A @ A
+        X = a * X + B @ X
+    return X.T if transposed else X
+
+
+class Muon(torch.optim.Optimizer):
+    def __init__(self, params, lr: float, momentum: float, backend_steps: int, nesterov: bool = True):
+        super().__init__(
+            params,
+            dict(lr=lr, momentum=momentum, backend_steps=backend_steps, nesterov=nesterov),
+        )
+
+    @torch.no_grad()
+    def step(self, closure=None):
+        loss = None
+        if closure is not None:
+            with torch.enable_grad():
+                loss = closure()
+
+        distributed = dist.is_available() and dist.is_initialized()
+        world_size = dist.get_world_size() if distributed else 1
+        rank = dist.get_rank() if distributed else 0
+
+        for group in self.param_groups:
+            params = group["params"]
+            if not params:
+                continue
+            lr = group["lr"]
+            momentum = group["momentum"]
+            backend_steps = group["backend_steps"]
+            nesterov = group["nesterov"]
+
+            total_params = sum(int(p.numel()) for p in params)
+            updates_flat = torch.zeros(total_params, device=params[0].device, dtype=torch.bfloat16)
+
+            curr = 0
+            for i, p in enumerate(params):
+                if i % world_size == rank and p.grad is not None:
+                    g = p.grad
+                    state = self.state[p]
+                    if "momentum_buffer" not in state:
+                        state["momentum_buffer"] = torch.zeros_like(g)
+                    buf = state["momentum_buffer"]
+                    buf.mul_(momentum).add_(g)
+                    if nesterov:
+                        g = g.add(buf, alpha=momentum)
+                    g = zeropower_via_newtonschulz5(g, steps=backend_steps)
+                    # Scale correction from Muon reference implementations.
+                    g *= max(1, g.size(0) / g.size(1)) ** 0.5
+                    updates_flat[curr : curr + p.numel()] = g.reshape(-1)
+                curr += p.numel()
+
+            if distributed:
+                dist.all_reduce(updates_flat, op=dist.ReduceOp.SUM)
+
+            curr = 0
+            for p in params:
+                g = updates_flat[curr : curr + p.numel()].view_as(p).to(dtype=p.dtype)
+                p.add_(g, alpha=-lr)
+                curr += p.numel()
+
+        return loss
 
 
 # -----------------------------
-# TOKENIZER-AGNOSTIC EVALUATION SETUP
+# TOKENIZER-AGNOSTIC EVALUATION SETUP 
 # -----------------------------
 #
 # It's common for small models have a large fraction of their parameters be embeddings, since the 2 * d_model * d_vocab vectors can be gigantic.
@@ -367,7 +425,7 @@ def dequantize_state_dict_int8(obj: dict[str, object]) -> dict[str, Tensor]:
 
 
 # -----------------------------
-# DATA LOADING
+# DATA LOADING 
 # -----------------------------
 
 def load_data_shard(file: Path) -> Tensor:
@@ -673,13 +731,11 @@ class GPT(nn.Module):
 # -----------------------------
 
 def main() -> None:
-    # The Dao-AILab GramNewtonSchulz uses @torch.compile(fullgraph=True, mode="reduce-overhead")
-    # which triggers recompilation for each distinct matrix shape. Increase cache limit
-    # to accommodate all weight shapes (4-6 unique shapes per model scale).
-    torch._dynamo.config.cache_size_limit = 64
+    global zeropower_via_newtonschulz5
 
     code = Path(__file__).read_text(encoding="utf-8")
     args = Hyperparameters()
+    zeropower_via_newtonschulz5 = torch.compile(zeropower_via_newtonschulz5)
 
     # -----------------------------
     # DISTRIBUTED + CUDA SETUP
@@ -821,40 +877,35 @@ def main() -> None:
     if base_model.skip_weights.numel() > 0:
         scalar_params.append(base_model.skip_weights)
     token_lr = args.tied_embed_lr if args.tie_embeddings else args.embed_lr
-    # Build the scalar (Adam) optimizer for all non-matrix params: embeddings, norms, heads.
-    scalar_adam_params = [
-        {"params": [base_model.tok_emb.weight], "lr": token_lr, "base_lr": token_lr},
-        {"params": scalar_params, "lr": args.scalar_lr, "base_lr": args.scalar_lr},
-    ]
-    if base_model.lm_head is not None:
-        scalar_adam_params.append(
-            {"params": [base_model.lm_head.weight], "lr": args.head_lr, "base_lr": args.head_lr}
-        )
-    scalar_optimizer = torch.optim.AdamW(
-        scalar_adam_params,
+    optimizer_tok = torch.optim.Adam(
+        [{"params": [base_model.tok_emb.weight], "lr": token_lr, "base_lr": token_lr}],
         betas=(args.beta1, args.beta2),
         eps=args.adam_eps,
-        weight_decay=0.0,
         fused=True,
     )
-    # Dao-AILab Muon: handles orthogonalization + scalar optimizer internally.
-    optimizer_muon = DaoMuon(
-        params=[{"params": matrix_params}],
+    optimizer_muon = Muon(
+        matrix_params,
         lr=args.matrix_lr,
-        weight_decay=0.0,
         momentum=args.muon_momentum,
-        nesterov=True,
-        adjust_lr=lambda lr, shape: lr * max(1, shape[-2] / shape[-1]) ** 0.5,
-        ns_coefficients_preset="YOU_COEFFICIENTS",
-        ns_use_kernels=True,
-        scalar_optimizer=scalar_optimizer,
+        backend_steps=args.muon_backend_steps,
     )
-    for group in optimizer_muon._muon_param_groups:
+    for group in optimizer_muon.param_groups:
         group["base_lr"] = args.matrix_lr
-    for group in scalar_optimizer.param_groups:
-        if "base_lr" not in group:
-            group["base_lr"] = group["lr"]
-    optimizers: list[torch.optim.Optimizer] = [optimizer_muon]
+    optimizer_scalar = torch.optim.Adam(
+        [{"params": scalar_params, "lr": args.scalar_lr, "base_lr": args.scalar_lr}],
+        betas=(args.beta1, args.beta2),
+        eps=args.adam_eps,
+        fused=True,
+    )
+    optimizers: list[torch.optim.Optimizer] = [optimizer_tok, optimizer_muon, optimizer_scalar]
+    if base_model.lm_head is not None:
+        optimizer_head = torch.optim.Adam(
+            [{"params": [base_model.lm_head.weight], "lr": args.head_lr, "base_lr": args.head_lr}],
+            betas=(args.beta1, args.beta2),
+            eps=args.adam_eps,
+            fused=True,
+        )
+        optimizers.insert(1, optimizer_head)
 
     n_params = sum(p.numel() for p in base_model.parameters())
     log0(f"model_params:{n_params}")
@@ -995,12 +1046,12 @@ def main() -> None:
 
         frac = min(step / args.muon_momentum_warmup_steps, 1.0) if args.muon_momentum_warmup_steps > 0 else 1.0
         muon_momentum = (1 - frac) * args.muon_momentum_warmup_start + frac * args.muon_momentum
-        for group in optimizer_muon._muon_param_groups:
+        for group in optimizer_muon.param_groups:
             group["momentum"] = muon_momentum
 
-        # Scale LR for all param groups (Muon exposes combined muon + scalar groups)
-        for group in optimizer_muon.param_groups:
-            group["lr"] = group["base_lr"] * scale
+        for opt in optimizers:
+            for group in opt.param_groups:
+                group["lr"] = group["base_lr"] * scale
 
         if args.grad_clip_norm > 0:
             torch.nn.utils.clip_grad_norm_(base_model.parameters(), args.grad_clip_norm)
@@ -1129,3 +1180,96 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+
+====================================================================================================
+Running Python 3.12.11 (main, Sep  2 2025, 14:20:58) [Clang 20.1.4 ]
+Running PyTorch 2.10.0+cu128
+Thu Apr  2 01:44:24 2026       
++-----------------------------------------------------------------------------------------+
+| NVIDIA-SMI 580.95.05              Driver Version: 580.95.05      CUDA Version: 13.0     |
++-----------------------------------------+------------------------+----------------------+
+| GPU  Name                 Persistence-M | Bus-Id          Disp.A | Volatile Uncorr. ECC |
+| Fan  Temp   Perf          Pwr:Usage/Cap |           Memory-Usage | GPU-Util  Compute M. |
+|                                         |                        |               MIG M. |
+|=========================================+========================+======================|
+|   0  NVIDIA H100 80GB HBM3          On  |   00000000:84:00.0 Off |                    0 |
+| N/A   35C    P0             80W /  700W |     527MiB /  81559MiB |      0%      Default |
+|                                         |                        |             Disabled |
++-----------------------------------------+------------------------+----------------------+
+
++-----------------------------------------------------------------------------------------+
+| Processes:                                                                              |
+|  GPU   GI   CI              PID   Type   Process name                        GPU Memory |
+|        ID   ID                                                               Usage      |
+|=========================================================================================|
+|    0   N/A  N/A               1      C   /bin/dumb-init                          518MiB |
++-----------------------------------------------------------------------------------------+
+
+====================================================================================================
+run_dir:outputs/v2/baseline_v2_512
+metrics_logfile:outputs/v2/baseline_v2_512/baseline_v2_512.jsonl
+val_bpb:enabled tokenizer_kind=sentencepiece tokenizer_path=./data/tokenizers/fineweb_1024_bpe.model
+train_loader:dataset:fineweb10B_sp1024 train_shards:80
+val_loader:shards pattern=./data/datasets/fineweb10B_sp1024/fineweb_val_*.bin tokens:62021632
+model_params:17059912
+world_size:1 grad_accum_steps:8
+sdp_backends:cudnn=False flash=True mem_efficient=False math=False
+attention_mode:gqa num_heads:8 num_kv_heads:4
+tie_embeddings:True embed_lr:0.05 head_lr:0.0 matrix_lr:0.04 scalar_lr:0.04
+train_batch_tokens:524288 train_seq_len:1024 iterations:20000 warmup_steps:20 max_wallclock_seconds:720.000
+seed:1337
+warmup_step:1/20
+warmup_step:2/20
+warmup_step:3/20
+warmup_step:4/20
+warmup_step:5/20
+warmup_step:6/20
+warmup_step:7/20
+warmup_step:8/20
+warmup_step:9/20
+warmup_step:10/20
+warmup_step:11/20
+warmup_step:12/20
+warmup_step:13/20
+warmup_step:14/20
+warmup_step:15/20
+warmup_step:16/20
+warmup_step:17/20
+warmup_step:18/20
+warmup_step:19/20
+warmup_step:20/20
+step:0/20000 val_loss:6.9357 val_bpb:4.1077 train_time:0ms step_avg:0.02ms
+step:1/20000 train_loss:6.9357 train_time:328ms step_avg:328.27ms
+step:2/20000 train_loss:16.7498 train_time:657ms step_avg:328.40ms
+step:3/20000 train_loss:8.7594 train_time:985ms step_avg:328.36ms
+step:4/20000 train_loss:6.5873 train_time:1315ms step_avg:328.75ms
+step:5/20000 train_loss:6.6507 train_time:1644ms step_avg:328.76ms
+step:6/20000 train_loss:6.6976 train_time:1973ms step_avg:328.88ms
+step:7/20000 train_loss:6.3314 train_time:2310ms step_avg:330.03ms
+step:8/20000 train_loss:6.1811 train_time:2640ms step_avg:329.98ms
+step:9/20000 train_loss:6.0838 train_time:2972ms step_avg:330.18ms
+step:10/20000 train_loss:5.9945 train_time:3301ms step_avg:330.09ms
+step:200/20000 train_loss:2.7929 train_time:66428ms step_avg:332.14ms
+step:400/20000 train_loss:2.4000 train_time:132883ms step_avg:332.21ms
+step:500/20000 val_loss:2.4997 val_bpb:1.4804 train_time:166062ms step_avg:332.12ms
+step:600/20000 train_loss:2.5025 train_time:199261ms step_avg:332.10ms
+step:800/20000 train_loss:2.3513 train_time:265582ms step_avg:331.98ms
+step:1000/20000 train_loss:2.3664 train_time:331843ms step_avg:331.84ms
+step:1000/20000 val_loss:2.3358 val_bpb:1.3834 train_time:331843ms step_avg:331.84ms
+step:1200/20000 train_loss:2.2822 train_time:398230ms step_avg:331.86ms
+step:1400/20000 train_loss:2.3070 train_time:464568ms step_avg:331.83ms
+step:1500/20000 val_loss:2.2458 val_bpb:1.3301 train_time:497748ms step_avg:331.83ms
+step:1600/20000 train_loss:2.1909 train_time:530911ms step_avg:331.82ms
+step:1800/20000 train_loss:2.2303 train_time:597191ms step_avg:331.77ms
+step:2000/20000 train_loss:2.1796 train_time:663508ms step_avg:331.75ms
+step:2000/20000 val_loss:2.1899 val_bpb:1.2970 train_time:663509ms step_avg:331.75ms
+step:2171/20000 val_loss:2.1789 val_bpb:1.2904 train_time:720271ms step_avg:331.77ms
+stopping_early: wallclock_cap train_time:720271ms step:2171/20000
+peak memory allocated: 10940 MiB reserved: 10982 MiB
+Serialized model: outputs/v2/baseline_v2_512/final_model.pt bytes:67224983
+Code size: 49960 bytes
+Total submission size: 67274943 bytes
+Serialized model int8+zlib: outputs/v2/baseline_v2_512/final_model.int8.ptz bytes:15169160 (payload:17178912 raw_torch:17224025 payload_ratio:3.91x)
+Total submission size int8+zlib: 15219120 bytes
+final_int8_zlib_roundtrip val_loss:2.1814 val_bpb:1.2919 eval_time:10480ms
+final_int8_zlib_roundtrip_exact val_loss:2.18138377 val_bpb:1.29193834

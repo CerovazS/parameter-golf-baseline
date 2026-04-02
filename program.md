@@ -1,13 +1,37 @@
-# Program
+# Program: GNS Muon v2 Benchmarks
 
-## User request
+## Objective
 
-Run two new baseline trainings on CINECA with the SLURM launcher, capping training at 20 minutes and comparing `cpus-per-task=16` versus `cpus-per-task=32`.
+Validate the Gram-Newton-Schulz Muon optimizer integration with:
+1. torch.compile patches (already applied to venv)
+2. LR adjustment fix (already in train_gpt_exp.py)
 
-## Steps
+Then iterate on hyperparameters to maximize step throughput × convergence quality.
 
-1. Ensure the baseline `sp1024` dataset is present with the expected train shards.
-2. Update `.env` so the default single-GPU wallclock cap is 20 minutes.
-3. Submit one baseline job with `cpus-per-task=16` and matching CPU thread env vars.
-4. Submit one baseline job with `cpus-per-task=32` and matching CPU thread env vars.
-5. Record the submitted job ids and verify their SLURM states.
+## Phase 1: Baseline + GNS v2 comparison (12-min runs)
+
+Run pairs of baseline vs GNS at each dimension:
+
+| # | Script | Dim | RUN_ID | Env Overrides |
+|---|--------|-----|--------|---------------|
+| 1 | train_gpt.py | 512 | baseline_v2_512 | (defaults) |
+| 2 | train_gpt_exp.py | 512 | gns_v2_512 | (defaults) |
+| 3 | train_gpt.py | 768 | baseline_v2_768 | MODEL_DIM=768 |
+| 4 | train_gpt_exp.py | 768 | gns_v2_768 | MODEL_DIM=768 |
+| 5 | train_gpt.py | 1024 | baseline_v2_1024 | MODEL_DIM=1024 NUM_HEADS=16 NUM_KV_HEADS=4 |
+| 6 | train_gpt_exp.py | 1024 | gns_v2_1024 | MODEL_DIM=1024 NUM_HEADS=16 NUM_KV_HEADS=4 |
+
+All: MAX_WALLCLOCK_SECONDS=720
+
+## Phase 2: Hyperparameter tuning for GNS Muon
+
+After Phase 1 confirms speed+quality parity, explore:
+- matrix_lr sweep (GNS may benefit from different LR)
+- momentum tuning
+- NS coefficients (YOU vs POLAR_EXPRESS)
+- Warmdown schedule optimization
+
+## Baselines to beat
+- dim=512: 366ms/step, val_bpb=1.2973
+- dim=768: 687ms/step, val_bpb=1.3035
+- dim=1024: 1280ms/step, val_bpb=1.3648

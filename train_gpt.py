@@ -27,6 +27,7 @@ import torch.distributed as dist
 import torch.nn.functional as F
 from torch import Tensor, nn
 from torch.nn.parallel import DistributedDataParallel as DDP
+from rich.console import Console
 
 # -----------------------------
 # HYPERPARAMETERS
@@ -58,7 +59,7 @@ class Hyperparameters:
     warmup_steps = int(os.environ.get("WARMUP_STEPS", 20))
     train_batch_tokens = int(os.environ.get("TRAIN_BATCH_TOKENS", 524_288))
     train_seq_len = int(os.environ.get("TRAIN_SEQ_LEN", 1024))
-    max_wallclock_seconds = float(os.environ.get("MAX_WALLCLOCK_SECONDS", 600.0))
+    max_wallclock_seconds = float(os.environ.get("MAX_WALLCLOCK_SECONDS", 500.0))
     qk_gain_init = float(os.environ.get("QK_GAIN_INIT", 1.5))
 
     # Model shape.
@@ -730,6 +731,25 @@ class GPT(nn.Module):
 # TRAINING
 # -----------------------------
 
+# -----------------------------
+# CONSOLE LOGGING HELPERS
+# -----------------------------
+
+_console = Console(force_terminal=True)
+
+def ok(msg: str) -> None:
+    _console.print(f"[bold green]OK[/bold green] {msg}")
+
+def info(msg: str) -> None:
+    _console.print(f"[cyan]INFO[/cyan] {msg}")
+
+def warn(msg: str) -> None:
+    _console.print(f"[bold yellow]WARN[/bold yellow] {msg}")
+
+def error(msg: str) -> None:
+    _console.print(f"[bold red]ERROR[/bold red] {msg}")
+
+
 def main() -> None:
     global zeropower_via_newtonschulz5
 
@@ -781,13 +801,13 @@ def main() -> None:
         metrics_logfile = run_dir / f"{args.run_id}.jsonl"
         text_log_handle = logfile.open("a", encoding="utf-8", buffering=1)
         metrics_log_handle = metrics_logfile.open("a", encoding="utf-8", buffering=1)
-        print(logfile)
+        ok(str(logfile))
 
-    def log0(msg: str, console: bool = True) -> None:
+    def log0(msg: str, console: bool = True, level: str = "info") -> None:
         if not master_process:
             return
         if console:
-            print(msg)
+            {"ok": ok, "info": info, "warn": warn, "error": error}.get(level, info)(msg)
         if text_log_handle is not None:
             print(msg, file=text_log_handle)
 
@@ -806,8 +826,8 @@ def main() -> None:
     )
     log0("=" * 100, console=False)
     if metrics_logfile is not None:
-        log0(f"run_dir:{run_dir}")
-        log0(f"metrics_logfile:{metrics_logfile}")
+        log0(f"run_dir:{run_dir}", level="ok")
+        log0(f"metrics_logfile:{metrics_logfile}", level="ok")
     # -----------------------------
     # TOKENIZER + VALIDATION METRIC SETUP
     # -----------------------------
@@ -830,9 +850,9 @@ def main() -> None:
     base_bytes_lut, has_leading_space_lut, is_boundary_token_lut = build_sentencepiece_luts(
         sp, args.vocab_size, device
     )
-    log0(f"val_bpb:enabled tokenizer_kind=sentencepiece tokenizer_path={args.tokenizer_path}")
-    log0(f"train_loader:dataset:{dataset_dir.name} train_shards:{actual_train_files}")
-    log0(f"val_loader:shards pattern={args.val_files} tokens:{val_tokens.numel() - 1}")
+    log0(f"val_bpb:enabled tokenizer_kind=sentencepiece tokenizer_path={args.tokenizer_path}", level="ok")
+    log0(f"train_loader:dataset:{dataset_dir.name} train_shards:{actual_train_files}", level="ok")
+    log0(f"val_loader:shards pattern={args.val_files} tokens:{val_tokens.numel() - 1}", level="ok")
 
     # -----------------------------
     # MODEL + OPTIMIZER SETUP
@@ -908,21 +928,23 @@ def main() -> None:
         optimizers.insert(1, optimizer_head)
 
     n_params = sum(p.numel() for p in base_model.parameters())
-    log0(f"model_params:{n_params}")
-    log0(f"world_size:{world_size} grad_accum_steps:{grad_accum_steps}")
-    log0("sdp_backends:cudnn=False flash=True mem_efficient=False math=False")
-    log0(f"attention_mode:gqa num_heads:{args.num_heads} num_kv_heads:{args.num_kv_heads}")
+    log0(f"model_params:{n_params}", level="ok")
+    log0(f"world_size:{world_size} grad_accum_steps:{grad_accum_steps}", level="ok")
+    log0("sdp_backends:cudnn=False flash=True mem_efficient=False math=False", level="ok")
+    log0(f"attention_mode:gqa num_heads:{args.num_heads} num_kv_heads:{args.num_kv_heads}", level="ok")
     log0(
         f"tie_embeddings:{args.tie_embeddings} embed_lr:{token_lr} "
         f"head_lr:{args.head_lr if base_model.lm_head is not None else 0.0} "
-        f"matrix_lr:{args.matrix_lr} scalar_lr:{args.scalar_lr}"
+        f"matrix_lr:{args.matrix_lr} scalar_lr:{args.scalar_lr}",
+        level="ok",
     )
     log0(
         f"train_batch_tokens:{args.train_batch_tokens} train_seq_len:{args.train_seq_len} "
         f"iterations:{args.iterations} warmup_steps:{args.warmup_steps} "
-        f"max_wallclock_seconds:{args.max_wallclock_seconds:.3f}"
+        f"max_wallclock_seconds:{args.max_wallclock_seconds:.3f}",
+        level="ok",
     )
-    log0(f"seed:{args.seed}")
+    log0(f"seed:{args.seed}", level="ok")
 
     # -----------------------------
     # DATA LOADER & MODEL WARMUP
@@ -1026,7 +1048,8 @@ def main() -> None:
             if stop_after_step is not None and step < args.iterations:
                 log0(
                     f"stopping_early: wallclock_cap train_time:{training_time_ms:.0f}ms "
-                    f"step:{step}/{args.iterations}"
+                    f"step:{step}/{args.iterations}",
+                    level="warn",
                 )
             break
 
@@ -1097,7 +1120,8 @@ def main() -> None:
 
     log0(
         f"peak memory allocated: {torch.cuda.max_memory_allocated() // 1024 // 1024} MiB "
-        f"reserved: {torch.cuda.max_memory_reserved() // 1024 // 1024} MiB"
+        f"reserved: {torch.cuda.max_memory_reserved() // 1024 // 1024} MiB",
+        level="ok",
     )
 
     # -----------------------------

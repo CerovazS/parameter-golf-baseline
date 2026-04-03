@@ -148,10 +148,48 @@ See `train_gpt.py` `Hyperparameters` class for all configurable environment vari
 
 See `LOGGING.md` for full documentation.
 
-**Launch a tracked experiment** (zero overhead on training):
+### Default Launcher: `tools/launch_run.sh`
+
+**Every experiment — interactive or batch — MUST go through `tools/launch_run.sh`.**
+It handles run directory creation, code snapshot, `meta.json` init/finalize, and
+output tee. Never call `torchrun` directly for a tracked experiment.
+
 ```bash
-HYPOTHESIS="Test higher Muon LR" MATRIX_LR=0.06 ./tools/launch_run.sh --gpus 1
+# Interactive (1 GPU, tracked)
+HYPOTHESIS="Test higher Muon LR" MATRIX_LR=0.06 \
+    ./tools/launch_run.sh --gpus 1
+
+# Custom script (e.g. low-rank variant)
+HYPOTHESIS="Spectron lr=0.04" MATRIX_LR=0.04 RANK_RATIO=0.25 \
+    ./tools/launch_run.sh --gpus 4 --script train_gpt_low_rank.py
+
+# With explicit run ID
+HYPOTHESIS="..." RUN_ID=my_run_name \
+    ./tools/launch_run.sh --gpus 1
 ```
+
+### SLURM Batch Scripts
+
+SLURM scripts in `scripts/` call `launch_run.sh` via `srun`. When writing or
+editing a batch script, follow these rules to avoid the `.env` override trap:
+
+**Critical: `.env` sets `RUN_ID` and `MAX_WALLCLOCK_SECONDS`. Always set
+experiment-specific vars AFTER sourcing `.env` and WITHOUT `:-` fallback.**
+
+```bash
+# WRONG — .env will override these silently
+export RUN_ID="${RUN_ID:-my_run}"          # .env already set RUN_ID
+export MAX_WALLCLOCK_SECONDS="${MAX_WALLCLOCK_SECONDS:-720}"  # same
+
+# CORRECT — unconditional assignment after source
+set -a; [ -f .env ] && source .env; set +a   # picks up DATA_PATH, PROXY_PORT, etc.
+export RUN_ID="my_run_$(date +%Y%m%d)_job${SLURM_JOB_ID}"   # always fresh
+export MAX_WALLCLOCK_SECONDS=720                               # always 12 min
+export HYPOTHESIS="..."                                        # always set
+```
+
+Vars safe with `:-` (`.env` does not set them): `MATRIX_LR`, `RANK_RATIO`,
+`VOCAB_SIZE`, `VAL_LOSS_EVERY`, `UV_PYTHON`, `UV_LINK_MODE`, thread counts.
 
 **Generate dashboard**:
 ```bash

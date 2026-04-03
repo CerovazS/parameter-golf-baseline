@@ -1,0 +1,105 @@
+{
+  "baseline": {
+    "run_id": "share4_baseline_20260403_job39005777",
+    "bpb_f32": 1.2613,
+    "bpb_int8": 1.2643,
+    "artifact_bytes": 15768735,
+    "steps": 3626,
+    "delta_bpb": 0.0,
+    "delta_artifact_bytes": 0
+  },
+  "round3_runs": [
+    {
+      "run_id": "share4_q_1pair_20260403_job39007757",
+      "config": {"ro": 0, "rq": 256, "rmlp_fc": 0, "rmlp_proj": 0, "pairs": 1},
+      "bpb_f32": 1.2612, "bpb_int8": 1.2640,
+      "artifact_bytes": 15651216, "steps": 3628,
+      "delta_bpb": -0.0003, "delta_artifact_bytes": -117519
+    },
+    {
+      "run_id": "share4_o_q_1p_20260403_job39007764",
+      "config": {"ro": 256, "rq": 256, "rmlp_fc": 0, "rmlp_proj": 0, "pairs": 1},
+      "bpb_f32": 1.2634, "bpb_int8": 1.2666,
+      "artifact_bytes": 15520697, "steps": 3633,
+      "delta_bpb": 0.0023, "delta_artifact_bytes": -248038
+    },
+    {
+      "run_id": "share4_q_2pairs_20260403_job39007758",
+      "config": {"ro": 0, "rq": 256, "rmlp_fc": 0, "rmlp_proj": 0, "pairs": 2},
+      "bpb_f32": 1.2636, "bpb_int8": 1.2668,
+      "artifact_bytes": 15405243, "steps": 3626,
+      "delta_bpb": 0.0025, "delta_artifact_bytes": -363492
+    },
+    {
+      "run_id": "share4_o_2pairs_20260403_job39007754",
+      "config": {"ro": 256, "rq": 0, "rmlp_fc": 0, "rmlp_proj": 0, "pairs": 2},
+      "bpb_f32": 1.2644, "bpb_int8": 1.2676,
+      "artifact_bytes": 15388314, "steps": 3620,
+      "delta_bpb": 0.0033, "delta_artifact_bytes": -380421
+    },
+    {
+      "run_id": "share4_mlp_proj_1p_20260403_job39007760",
+      "config": {"ro": 0, "rq": 0, "rmlp_fc": 0, "rmlp_proj": 256, "pairs": 1},
+      "bpb_f32": 1.2679, "bpb_int8": 1.2711,
+      "artifact_bytes": 15269849, "steps": 3638,
+      "delta_bpb": 0.0068, "delta_artifact_bytes": -498886
+    },
+    {
+      "run_id": "share4_mlp_fc_1p_20260403_job39007759",
+      "config": {"ro": 0, "rq": 0, "rmlp_fc": 256, "rmlp_proj": 0, "pairs": 1},
+      "bpb_f32": 1.2678, "bpb_int8": 1.2715,
+      "artifact_bytes": 15399079, "steps": 3634,
+      "delta_bpb": 0.0072, "delta_artifact_bytes": -369656
+    },
+    {
+      "run_id": "share4_o_3pairs_20260403_job39007755",
+      "config": {"ro": 256, "rq": 0, "rmlp_fc": 0, "rmlp_proj": 0, "pairs": 3},
+      "bpb_f32": 1.2680, "bpb_int8": 1.2713,
+      "artifact_bytes": 15154897, "steps": 3634,
+      "delta_bpb": 0.0070, "delta_artifact_bytes": -613838
+    },
+    {
+      "run_id": "share4_o_q_2p_20260403_job39007765",
+      "config": {"ro": 256, "rq": 256, "rmlp_fc": 0, "rmlp_proj": 0, "pairs": 2},
+      "bpb_f32": 1.2668, "bpb_int8": 1.2702,
+      "artifact_bytes": 15038260, "steps": 3624,
+      "delta_bpb": 0.0059, "delta_artifact_bytes": -730475
+    },
+    {
+      "run_id": "share4_o_mlp_fc_1p_20260403_job39007766",
+      "config": {"ro": 256, "rq": 0, "rmlp_fc": 256, "rmlp_proj": 0, "pairs": 1},
+      "bpb_f32": 1.2691, "bpb_int8": 1.2727,
+      "artifact_bytes": 15273737, "steps": 3627,
+      "delta_bpb": 0.0084, "delta_artifact_bytes": -495008
+    },
+    {
+      "run_id": "share4_o_4pairs_20260403_job39007756",
+      "config": {"ro": 256, "rq": 0, "rmlp_fc": 0, "rmlp_proj": 0, "pairs": 4},
+      "bpb_f32": 1.2675, "bpb_int8": 1.2709,
+      "artifact_bytes": 14923209, "steps": 3627,
+      "delta_bpb": 0.0066, "delta_artifact_bytes": -845526
+    },
+    {
+      "run_id": "share4_mlp_both_1p_20260403_job39007761",
+      "config": {"ro": 0, "rq": 0, "rmlp_fc": 256, "rmlp_proj": 256, "pairs": 1},
+      "bpb_f32": 1.2750, "bpb_int8": 1.2793,
+      "artifact_bytes": 14924042, "steps": 3629,
+      "delta_bpb": 0.0150, "delta_artifact_bytes": -844693
+    },
+    {
+      "run_id": "share4_mlp_fc_2p_20260403_job39007763",
+      "config": {"ro": 0, "rq": 0, "rmlp_fc": 256, "rmlp_proj": 0, "pairs": 2},
+      "bpb_f32": 1.2728, "bpb_int8": 1.2762,
+      "artifact_bytes": 14901022, "steps": 3671,
+      "delta_bpb": 0.0119, "delta_artifact_bytes": -867713
+    },
+    {
+      "run_id": "share4_full_1p_20260403_job39007767",
+      "config": {"ro": 256, "rq": 256, "rmlp_fc": 256, "rmlp_proj": 256, "pairs": 1},
+      "bpb_f32": 1.3677, "bpb_int8": 1.3700,
+      "artifact_bytes": 12227414, "steps": 1163,
+      "delta_bpb": 0.1057, "delta_artifact_bytes": -3541321,
+      "note": "FAILED — training diverged, only 1163 steps completed"
+    }
+  ]
+}

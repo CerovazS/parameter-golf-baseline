@@ -18,4 +18,16 @@ dependencies = [
     "nvitop>=1.6.2",
     "plotly>=6.6.0",
     "rich>=14.3.3",
+    "flash-attn-3>=3.0.0",
+    "zstandard>=0.25.0",
+    "gram-newton-schulz",
 ]
+
+[[tool.uv.index]]
+name = "pytorch-cu128"
+url = "https://download.pytorch.org/whl/cu128"
+explicit = true
+
+[tool.uv.sources]
+gram-newton-schulz = { git = "https://github.com/Dao-AILab/gram-newton-schulz.git" }
+flash-attn-3 = { index = "pytorch-cu128" }

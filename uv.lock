@@ -380,7 +380,7 @@ wheels = [
 [[package]]
 name = "flash-attn-3"
 version = "3.0.0"
-source = { registry = "https://download.pytorch.org/whl/cu128" }
+source = { registry = "https://download.pytorch.org/whl/cu130" }
 dependencies = [
     { name = "einops" },
     { name = "ninja" },
@@ -388,9 +388,8 @@ dependencies = [
     { name = "torch" },
 ]
 wheels = [
-    { url = "https://download.pytorch.org/whl/cu128/flash_attn_3-3.0.0-cp39-abi3-manylinux_2_28_x86_64.whl" },
-    { url = "https://download.pytorch.org/whl/cu128/flash_attn_3-3.0.0-cp39-abi3-manylinux_2_34_aarch64.whl" },
-    { url = "https://download.pytorch.org/whl/cu128/flash_attn_3-3.0.0-cp39-abi3-win_amd64.whl" },
+    { url = "https://download.pytorch.org/whl/cu130/flash_attn_3-3.0.0-cp39-abi3-manylinux_2_28_x86_64.whl" },
+    { url = "https://download.pytorch.org/whl/cu130/flash_attn_3-3.0.0-cp39-abi3-manylinux_2_34_aarch64.whl" },
 ]
 
 [[package]]
@@ -1306,7 +1305,7 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "datasets" },
-    { name = "flash-attn-3", specifier = ">=3.0.0", index = "https://download.pytorch.org/whl/cu128" },
+    { name = "flash-attn-3", specifier = ">=3.0.0", index = "https://download.pytorch.org/whl/cu130" },
     { name = "gram-newton-schulz", git = "https://github.com/Dao-AILab/gram-newton-schulz.git" },
     { name = "huggingface-hub" },
     { name = "kernels" },

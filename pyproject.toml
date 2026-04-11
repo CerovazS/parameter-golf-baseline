@@ -24,10 +24,10 @@ dependencies = [
 ]
 
 [[tool.uv.index]]
-name = "pytorch-cu128"
-url = "https://download.pytorch.org/whl/cu128"
+name = "pytorch-cu130"
+url = "https://download.pytorch.org/whl/cu130"
 explicit = true
 
 [tool.uv.sources]
 gram-newton-schulz = { git = "https://github.com/Dao-AILab/gram-newton-schulz.git" }
-flash-attn-3 = { index = "pytorch-cu128" }
+flash-attn-3 = { index = "pytorch-cu130" }
